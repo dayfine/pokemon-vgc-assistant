@@ -3,24 +3,26 @@
 ## Last updated: 2026-04-27
 
 ## Status
-READY_FOR_REVIEW
+MERGED
 
 ## Current milestone
-M3 — BP scoring
+None — engine track is feature-complete for v1 through M3. Next
+milestones (M4 priors, M5 vision) are owned by separate tracks. Re-open
+this track only for M3 follow-ups (see below) or v2 work.
 
 ## Completed
 - M1: engine skeleton + calc wrapper + 5 pinned Gen 9 calcs (PR #2, merged)
 - M2: KO matrix + speed tiers + Side / StatStage explicit types (PRs #6, #7-CI)
+- M3: BP scoring — `engine.score(combo, oppTeam, matrix, speed, weights) → Score`
+  and `engine.recommendBP(myTeam, oppTeam, weights) → RankedPicks` (top 3 of
+  C(6,4)=15). v1 scoring is dumb-but-transparent: weighted sum of (1HKO
+  threats I have) + (speed control) + (defensive answers) − (1HKOs I take)
+  − (role gaps). Weights live in `pva.config.ts` (new, repo root); engine
+  owns the `ScoreWeights` type but never reads the file. Three hand-graded
+  scenarios + four guard-semantics unit tests. (PR #8, merged.)
 
 ## In Progress
-- M3: `engine.score(combo, oppTeam, matrix, speed, weights) → Score` and
-  `engine.recommendBP(myTeam, oppTeam, weights) → RankedPicks` (top 3 of
-  C(6,4)=15) — open in PR (see GitHub). v1 scoring is dumb-but-transparent:
-  weighted sum of (1HKO threats I have) + (speed control) + (defensive
-  answers) − (1HKOs I take) − (role gaps). Weights live in `pva.config.ts`
-  (new, repo root); engine owns the `ScoreWeights` type but never reads
-  the file (engine remains pure, weights flow in as a parameter). Three
-  hand-graded test scenarios assert ordering, not absolute totals.
+(none)
 
 ## Blocking refactors
 (none)
@@ -37,9 +39,10 @@ M3 — BP scoring
   the score breakdown. Surface ties to the report layer (M6) so
   rationale text can call them out.
 - Matrix's "all relevant moves" = every non-status move on
-  `pokemon.moves`. Once `priors` lands (M4), iterate over kit candidates
-  per opp mon and aggregate; matrix shape is already cell-list-of-moves
-  so the change is additive.
+  `pokemon.moves`. M4 (priors) iterates over kit candidates per opp mon
+  and aggregates; matrix cell payload may shift from `Matchup[]` to
+  `KitCell[] = { weight, matchups }[]` per
+  `dev/plans/03-priors-design.md`. Additive.
 - `pva.config.ts` ships with `scoreWeights` only in M3; the other
   tunables (`format`, `sheetMode`, `priorsCacheTtl`, `claudeModel`) are
   scaffolded as TODO-typed and left to their respective milestones.
