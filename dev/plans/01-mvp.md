@@ -64,22 +64,45 @@ of teams.
 
 **Done when:** picks pass eyeball test on 3+ hand-built scenarios.
 
-### M4 — Set priors (load-bearing under closed sheet)
+### M4 — Set priors, simple (load-bearing under closed sheet)
 
-- Package `priors/` — fetch + cache Pikalytics (or Smogon chaos JSON when
-  available) per format.
-- For each **species**, return top-N candidate **full kits**
-  (item, ability, 4 moves, Tera, SP-spread, nature) with probability
-  weights. Under closed sheet, species is the only key we have.
+See `dev/plans/03-priors-design.md` for the full design and the M4 / M4.5
+split rationale.
+
+- Package `priors/` — fetch + cache Pikalytics per format via the
+  `/ai/pokedex/<format>/<species>` Markdown endpoints (no HTML scraping;
+  site allows ClaudeBot, see `dev/research/pikalytics-2026-04-27.md`).
+- For each **species**, return `KitCandidate[]` bucketed by **item** —
+  Pikalytics' AI endpoints don't expose spreads/nature/Tera, so v1
+  attaches a hand-curated representative spread per item-role bucket
+  (see §M4 in the design doc).
 - Apply: matrix + scoring iterate over kit candidates per opp mon, weight
-  outcomes by prior probability. Report surfaces top set(s) per mon
-  ("60% Choice Band, 25% AV, 15% Sash") and flags decisions that flip
+  outcomes by prior probability (binary 1HKO yes/no per kit in M4;
+  real-valued in M4.5). Report surfaces top set(s) per mon
+  ("60% Choice Band, 25% AV, 15% Sitrus") and flags decisions that flip
   across plausible kits.
 - Open-sheet input collapses the prior to a single known kit (minus
   SP/nature) — same code path, narrower distribution.
 
 **Done when:** species → ranked kit candidates feeds matrix; report shows
-per-mon set distribution with weights.
+per-mon set distribution with weights; one Pikalytics fixture-driven
+golden test passes.
+
+### M4.5 — Threshold-probability layer
+
+Replaces M4's binary cell payload with a probability-of-outcome model.
+Per (attacker_kit, defender_kit, move, field), pre-compute the
+offensive-stat threshold T₁ that guarantees a 1HKO and integrate against
+a coarse hand-curated plausible-stat distribution per species. Same
+matrix shape, real-valued cells; `score` reads expected-count
+contributions instead of binary ones.
+
+See `dev/plans/03-priors-design.md` §M4.5 for the math, the threshold
+solver options, and the cache shape.
+
+**Done when:** thresholds cached per (kit-pair, move, field); plausible
+stat distributions for ≥10 hand-curated species; `recommendBP` ordering
+is stable through the binary→real-valued migration.
 
 ### M5 — Vision input
 
@@ -129,8 +152,13 @@ ranked game; open-sheet path has at least one passing fixture.
    Mega Feraligatr, …) ourselves?
 3. SP → stat-line conversion: is there a published formula? If not, derive
    from in-game observation or community tools.
-4. Pikalytics — does it expose a structured API or do we have to scrape
-   HTML? Check ToS before scraping.
+4. ~~Pikalytics — does it expose a structured API or do we have to scrape
+   HTML? Check ToS before scraping.~~ **Resolved 2026-04-27**: use the
+   `/ai/pokedex/<format>/<species>` Markdown endpoints. ClaudeBot
+   explicitly allowed in `robots.txt`. Spreads / nature / Tera are not
+   exposed there; M4.5 handles that with a threshold-probability layer
+   (see `dev/plans/03-priors-design.md` and
+   `dev/research/pikalytics-2026-04-27.md`).
 
 ## Non-goals (explicit)
 
