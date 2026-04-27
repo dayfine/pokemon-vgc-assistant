@@ -2,12 +2,14 @@ export { Field, Move, Pokemon } from '@smogon/calc';
 export { calc } from './calc.js';
 export { DEFAULT_FORMAT, getGeneration } from './data.js';
 export { matrix } from './matrix.js';
+export { score } from './score.js';
 export { speedTiers } from './speed.js';
 export type {
   MatchupMatrix,
   MatrixOptions,
   MatrixSide,
 } from './matrix.js';
+export type { Role, Score, ScoreBreakdown, ScoreWeights } from './score.js';
 export type {
   MonSpeedModifiers,
   SideSpeedModifiers,
