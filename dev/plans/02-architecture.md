@@ -158,7 +158,7 @@ converge on the real kit.
 
 ## Config
 
-- One root config: `pvg.config.ts` at repo root (or `~/.config/pvg/`).
+- One root config: `pva.config.ts` at repo root (or `~/.config/pva/`).
 - Knobs: `format`, `sheetMode`, `priorsCacheTtl`, `claudeModel`,
   `scoreWeights`.
 - All scoring weights live here, not hardcoded.
