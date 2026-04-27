@@ -5,7 +5,7 @@
 Run one command:
 
 ```
-pvg recommend --my my-team.txt --opp opp-preview.png
+pva recommend --my my-team.txt --opp opp-preview.png
 ```
 
 Get back a markdown report with:
@@ -99,7 +99,7 @@ ranked game; open-sheet path has at least one passing fixture.
 
 ### M6 — CLI glue
 
-- Package `cli/` — `pvg recommend --my <file> --opp <png>` runs the full
+- Package `cli/` — `pva recommend --my <file> --opp <png>` runs the full
   pipeline, prints markdown.
 - My-team input v1: typed `.txt` in Showdown export format (parsed by
   `@pkmn/sets`).
