@@ -33,7 +33,9 @@ M3 — BP scoring
   `engine.matrix(...)` / `engine.recommendBP(...)` to make the
   M1/M2/M3 "done when" criteria runnable from a copy-paste.
 - Speed-tie handling: `speedTiers` is a stable sort; it does *not* model
-  the 50/50 coin flip. Surface ties to the report layer when M3 lands so
+  the 50/50 coin flip. M3's `score.pickedOutspeedOpp` counts only
+  strictly-faster mons — equal-effective-speed ties are not flagged in
+  the score breakdown. Surface ties to the report layer (M6) so
   rationale text can call them out.
 - Matrix's "all relevant moves" = every non-status move on
   `pokemon.moves`. Once `priors` lands (M4), iterate over kit candidates
