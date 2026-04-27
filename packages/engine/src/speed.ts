@@ -1,4 +1,4 @@
-import type { Pokemon } from './types.js';
+import type { Pokemon, Side, StatStage } from './types.js';
 
 /**
  * Side-level modifiers that apply to every Pokémon on that side.
@@ -25,8 +25,8 @@ export interface SideSpeedModifiers {
  * call is made.
  */
 export interface MonSpeedModifiers {
-  /** Stat-stage boost in [-6, +6]. */
-  readonly boost?: number;
+  /** Speed stat-stage boost. */
+  readonly boost?: StatStage;
   /** Paralysis halves speed in Gen 7+. */
   readonly paralyzed?: boolean;
   /**
@@ -40,7 +40,7 @@ export interface MonSpeedModifiers {
 
 export interface SpeedEntry {
   readonly pokemon: Pokemon;
-  readonly side: 'my' | 'opp';
+  readonly side: Side;
   /** Final speed value used for ordering, after every modifier. */
   readonly effective: number;
   /** Base computed speed (`pokemon.stats.spe`) before this layer's modifiers. */
@@ -49,7 +49,7 @@ export interface SpeedEntry {
 
 export interface SpeedInput {
   readonly pokemon: Pokemon;
-  readonly side: 'my' | 'opp';
+  readonly side: Side;
   readonly mods?: MonSpeedModifiers;
 }
 
@@ -66,9 +66,8 @@ export interface SpeedRanking {
  *   negative stage n → 2 / (2 + |n|)
  * Both branches reduce to 1 at stage 0.
  */
-function stageMultiplier(boost: number): number {
-  const clamped = Math.max(-6, Math.min(6, Math.trunc(boost)));
-  return clamped >= 0 ? (2 + clamped) / 2 : 2 / (2 - clamped);
+function stageMultiplier(boost: StatStage): number {
+  return boost >= 0 ? (2 + boost) / 2 : 2 / (2 - boost);
 }
 
 function effectiveSpeed(
@@ -99,7 +98,7 @@ function effectiveSpeed(
  */
 export function speedTiers(
   inputs: readonly SpeedInput[],
-  sideMods: { my?: SideSpeedModifiers; opp?: SideSpeedModifiers } = {},
+  sideMods: { [K in Side]?: SideSpeedModifiers } = {},
 ): SpeedRanking {
   const my = sideMods.my ?? {};
   const opp = sideMods.opp ?? {};

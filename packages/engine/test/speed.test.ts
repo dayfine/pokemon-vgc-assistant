@@ -100,10 +100,4 @@ describe('speedTiers — modifiers', () => {
     // 205 * 1.5 = 307.5 -> 307; * 0.5 = 153.5 -> 153.
     expect(ranking.entries[0]?.effective).toBe(153);
   });
-
-  it('clamps boost to [-6, +6]', () => {
-    const r1 = speedTiers([{ pokemon: flutterMane(), side: 'my', mods: { boost: 99 } }]);
-    const r2 = speedTiers([{ pokemon: flutterMane(), side: 'my', mods: { boost: 6 } }]);
-    expect(r1.entries[0]?.effective).toBe(r2.entries[0]?.effective);
-  });
 });

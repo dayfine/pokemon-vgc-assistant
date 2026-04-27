@@ -15,5 +15,5 @@ export type {
   SpeedInput,
   SpeedRanking,
 } from './speed.js';
-export type { DamageRange, Item, Matchup, TeamSet } from './types.js';
+export type { DamageRange, Item, Matchup, Side, StatStage, TeamSet } from './types.js';
 export type { Format } from './data.js';
