@@ -10,13 +10,19 @@ pvg recommend --my my-team.txt --opp opp-preview.png
 
 Get back a markdown report with:
 
-- Top 3 BP picks (4 mons each), with one-line rationale per pick.
-- Per-matchup table: my 6 × opp 6, marked with 1HKO / 2HKO / outsped /
-  outspeeds, both directions.
-- Per opp mon: 2–3 bullet "watch out" notes (likely SP spread, key threats,
-  Mega risk if applicable).
+- **Pre-computed damage preview**: full my-6 × opp-6 matrix, both
+  directions, every relevant move, marked 1HKO / 2HKO / 3HKO / outsped /
+  outspeeds. This is the *index* of the report — every other section
+  cites cells from it. Computed once up front for all candidate kits, not
+  lazily per pick.
+- Top 3 BP picks (4 mons each), with one-line rationale per pick that
+  references matrix cells.
+- Per opp mon: 2–3 bullet "watch out" notes — likely sets (with weights),
+  key threats, Mega risk if applicable. Under closed-sheet input, "likely
+  sets" is the load-bearing line.
 
-Acceptable v1 latency: <30 s per report (one vision call + N calc runs).
+Acceptable v1 latency: <30 s per report (one vision call + matrix
+pre-compute + ranking).
 
 ## Milestones
 
@@ -58,28 +64,38 @@ of teams.
 
 **Done when:** picks pass eyeball test on 3+ hand-built scenarios.
 
-### M4 — Set priors
+### M4 — Set priors (load-bearing under closed sheet)
 
 - Package `priors/` — fetch + cache Pikalytics (or Smogon chaos JSON when
   available) per format.
-- For each species, return top-N (SP spread, nature, ability, item, moves)
-  combos with probability weights.
-- Apply: when opp set is fully known (open sheet) but SP/nature not, use
-  priors to pick most likely spread for calc. Surface uncertainty in
-  report ("75% Bulky AV, 20% Offensive, 5% other").
+- For each **species**, return top-N candidate **full kits**
+  (item, ability, 4 moves, Tera, SP-spread, nature) with probability
+  weights. Under closed sheet, species is the only key we have.
+- Apply: matrix + scoring iterate over kit candidates per opp mon, weight
+  outcomes by prior probability. Report surfaces top set(s) per mon
+  ("60% Choice Band, 25% AV, 15% Sash") and flags decisions that flip
+  across plausible kits.
+- Open-sheet input collapses the prior to a single known kit (minus
+  SP/nature) — same code path, narrower distribution.
 
-**Done when:** priors layer plugs into calc, report shows confidence.
+**Done when:** species → ranked kit candidates feeds matrix; report shows
+per-mon set distribution with weights.
 
 ### M5 — Vision input
 
 - Package `vision/` — given opp team-preview screenshot, return 6
-  `OppMonPreview` records (species, ability, item, moves, Tera).
+  `OppMonPreview` records.
+- Default mode (ranked, closed sheet): species only.
+- Open-sheet mode (tournament input): species + ability + item + moves +
+  Tera. Same pipeline, richer schema.
 - Use Claude vision API. Prompt with field schema; parse JSON response.
 - Validation: every extracted field must exist in `gen9champions` legal
   data; reject + retry on invalid extraction.
-- Tests: 5 hand-collected screenshots, golden expected JSON.
+- Tests: 5 hand-collected ranked screenshots (species only) + 2
+  open-sheet screenshots, golden expected JSON.
 
-**Done when:** screenshot → JSON works on test fixtures + 1 live game.
+**Done when:** screenshot → JSON works on closed-sheet fixtures + 1 live
+ranked game; open-sheet path has at least one passing fixture.
 
 ### M6 — CLI glue
 
@@ -91,11 +107,16 @@ of teams.
 
 **Done when:** one command produces a usable report end-to-end.
 
-### M7 (post-MVP) — Web UI
+### M7 (post-MVP) — Web UI + scenario notes
 
 - Package `web/` — Vite + React. Engine imports as workspace dep.
 - Upload screenshot, paste team, get interactive report. Toggle assumptions
-  (Mega scenarios, "what if opp Choice Scarfed", weather).
+  (Mega scenarios, "what if opp Choice Scarfed", weather, lead pairs).
+- **Per-opp note overrides**: as the series reveals info ("Incineroar
+  used Knock Off", "locked into Make It Rain"), pin those facts and
+  re-narrow the prior. Notes persist per opp / session so the model
+  refines across games 2 and 3 of a series.
+- Recompute matrix + picks live under the refined kit distribution.
 
 ## Open questions to resolve before M1
 
@@ -120,3 +141,5 @@ of teams.
   most-used Mega.
 - No replay scraping in v1 — priors come from Pikalytics/Smogon dumps,
   not raw replays.
+- Not hardcoding Reg M-A. Format is a config knob from M1; rotation to
+  M-B/M-C/etc. is a data + config change, not a code rewrite.

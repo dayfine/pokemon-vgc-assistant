@@ -57,22 +57,35 @@ testable in isolation + re-usable.
 
 ## Data flow (v1 / CLI)
 
+Closed sheet (ranked) is the default; vision returns species only and the
+priors layer expands each species into weighted candidate kits.
+
 ```
-opp-preview.png ──> vision ──> OppTeamPreview (6 mons, full kit minus SP)
+opp-preview.png ──> vision ──> OppTeamPreview
+                                  (closed: 6 species)
+                                  (open:   6 species + ability + item
+                                           + moves + Tera)
                                     │
 my-team.txt ──> @pkmn/sets ──> MyTeam (6 full sets)
                                     │
                                     ▼
-priors ──> SpreadPriors per opp mon ──┐
-                                       ▼
-                              engine.recommendBP
-                                       │
-                                       ▼
-                                 RankedPicks
-                                       │
-                                       ▼
-                              report.markdown ──> stdout
+priors ──> per opp species: ranked candidate kits w/ weights ──┐
+           (open-sheet input collapses to one known kit per mon)│
+                                                                ▼
+                                            engine.matrix (full preview)
+                                                                │
+                                                                ▼
+                                            engine.recommendBP
+                                                                │
+                                                                ▼
+                                                          RankedPicks
+                                                                │
+                                                                ▼
+                                            report.markdown ──> stdout
 ```
+
+The matrix is computed once, up front, across kit candidates and is the
+spine of the report — picks/notes both cite into it.
 
 ## Engine module shape
 
@@ -106,35 +119,65 @@ everything downstream takes data as an argument.
 vision/
   src/
     extract.ts         # screenshot → OppTeamPreview (calls Claude API)
-    schema.ts          # JSON schema for vision response
-    validate.ts        # cross-check against legal-data
+    schema.ts          # JSON schemas: ClosedSheet (species only),
+                       #               OpenSheet  (full kit minus SP)
+    validate.ts        # cross-check against legal-data for active format
     index.ts
   test/
-    fixtures/*.png     # hand-collected previews
+    fixtures/*.png     # hand-collected previews (closed + open)
     extract.test.ts    # golden JSON per fixture
 ```
 
-API key from env (`ANTHROPIC_API_KEY`). No key committed.
+`extract` takes a `sheetMode: 'closed' | 'open'` parameter; default
+`closed`. API key from env (`ANTHROPIC_API_KEY`). No key committed.
 
 ## Priors module shape
+
+Priors do most of the heavy lifting under closed-sheet input — they map a
+species to a ranked list of plausible full kits.
 
 ```
 priors/
   src/
-    pikalytics.ts      # fetch + parse Pikalytics
-    smogon.ts          # fetch + parse Smogon chaos JSON
-    cache.ts           # local fs cache w/ TTL
-    types.ts           # SpreadPrior, ItemPrior, MoveDistribution
+    pikalytics.ts      # fetch + parse Pikalytics (per-format)
+    smogon.ts          # fetch + parse Smogon chaos JSON (per-format)
+    cache.ts           # local fs cache w/ per-format TTL
+    expand.ts          # species → KitCandidate[] (weighted)
+    refine.ts          # narrow KitCandidate[] given observed facts
+                       # (notes from web UI: "used Knock Off",
+                       #  "Choice-locked", item revealed, etc.)
+    types.ts           # KitCandidate, SpreadPrior, ItemPrior, …
     index.ts
   test/
     fixtures/*.json    # cached responses for offline tests
 ```
 
+`refine` is what makes per-opp notes (M7) actionable: each new
+observation prunes or reweights candidates so subsequent recomputes
+converge on the real kit.
+
 ## Config
 
 - One root config: `pvg.config.ts` at repo root (or `~/.config/pvg/`).
-- Knobs: `format`, `priorsCacheTtl`, `claudeModel`, `scoreWeights`.
+- Knobs: `format`, `sheetMode`, `priorsCacheTtl`, `claudeModel`,
+  `scoreWeights`.
 - All scoring weights live here, not hardcoded.
+
+## Format rotation (built-in, not bolted on)
+
+Champions formats rotate every few months. The architecture treats
+`format` as a first-class parameter end-to-end:
+
+- `engine.data.load(format)` returns the legal species/move/item set for
+  that format. No hardcoded `gen9championsvgc2026regma` outside
+  config/data files.
+- `priors` caches per `(format, source)` pair. Cache key includes
+  format; switching formats does not invalidate other formats' caches.
+- `vision.validate` checks against the active format's legal data.
+- `score.ts` weights are per-format-overridable (some formats may want
+  different role priors).
+- Adding M-B: drop the new format ID + data refs into config, fetch new
+  Pikalytics page, ship. No code changes in `engine`/`vision`/`priors`.
 
 ## Open architecture questions
 
