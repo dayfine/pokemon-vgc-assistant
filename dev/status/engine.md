@@ -3,7 +3,7 @@
 ## Last updated: 2026-04-27
 
 ## Status
-IN_PROGRESS
+READY_FOR_REVIEW
 
 ## Current milestone
 M3 — BP scoring
@@ -15,13 +15,12 @@ M3 — BP scoring
 ## In Progress
 - M3: `engine.score(combo, oppTeam, matrix, speed, weights) → Score` and
   `engine.recommendBP(myTeam, oppTeam, weights) → RankedPicks` (top 3 of
-  C(6,4)=15). v1 scoring is dumb-but-transparent: weighted sum of
-  (1HKO threats I have) + (speed control) + (defensive answers) −
-  (1HKOs I take) − (role gaps). Weights live in `pva.config.ts` (new,
-  repo root) — engine takes weights as a parameter; no I/O in engine.
-  Tests assert *ordering* under three hand-built scenarios (type-mismatch,
-  speed-control, defensive-answer obvious) — ordering is the load-bearing
-  claim, not exact score numbers.
+  C(6,4)=15) — open in PR (see GitHub). v1 scoring is dumb-but-transparent:
+  weighted sum of (1HKO threats I have) + (speed control) + (defensive
+  answers) − (1HKOs I take) − (role gaps). Weights live in `pva.config.ts`
+  (new, repo root); engine owns the `ScoreWeights` type but never reads
+  the file (engine remains pure, weights flow in as a parameter). Three
+  hand-graded test scenarios assert ordering, not absolute totals.
 
 ## Blocking refactors
 (none)
