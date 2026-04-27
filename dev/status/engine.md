@@ -3,24 +3,25 @@
 ## Last updated: 2026-04-27
 
 ## Status
-READY_FOR_REVIEW
+IN_PROGRESS
 
 ## Current milestone
-M2 — KO matrix + speed tiers
+M3 — BP scoring
 
 ## Completed
 - M1: engine skeleton + calc wrapper + 5 pinned Gen 9 calcs (PR #2, merged)
+- M2: KO matrix + speed tiers + Side / StatStage explicit types (PRs #6, #7-CI)
 
 ## In Progress
-- M2: `engine.matrix(myTeam, oppTeam) → MatchupMatrix` + `engine.speedTiers`
-  with Tailwind / Trick Room / Choice Scarf / boost / paralysis modifiers.
-  Hardened `engine.calc` so 0-damage matchups (type immunities) return a
-  clean `{ min: 0, max: 0, notation: 'no damage' }` cell instead of
-  letting `kochance()` throw — required so the matrix can iterate every
-  move on a set without the caller pre-filtering immunities.
-  Pinned golden matrix snapshot for a Calyrex-Shadow + Incineroar vs.
-  Miraidon + Flutter Mane archetype matchup at L50, doubles, Electric
-  Terrain.
+- M3: `engine.score(combo, oppTeam, matrix, speed, weights) → Score` and
+  `engine.recommendBP(myTeam, oppTeam, weights) → RankedPicks` (top 3 of
+  C(6,4)=15). v1 scoring is dumb-but-transparent: weighted sum of
+  (1HKO threats I have) + (speed control) + (defensive answers) −
+  (1HKOs I take) − (role gaps). Weights live in `pva.config.ts` (new,
+  repo root) — engine takes weights as a parameter; no I/O in engine.
+  Tests assert *ordering* under three hand-built scenarios (type-mismatch,
+  speed-control, defensive-answer obvious) — ordering is the load-bearing
+  claim, not exact score numbers.
 
 ## Blocking refactors
 (none)
@@ -29,8 +30,8 @@ M2 — KO matrix + speed tiers
 - Wire `gen9champions` mod data into `engine/src/data.ts:getGeneration()`
   once plan open Q1/Q2/Q3 are resolved (M1.5 — separate slice).
 - Add a Node REPL example to README showing `engine.calc(...)` /
-  `engine.matrix(...)` to make the M1/M2 "done when" criteria runnable
-  from a copy-paste.
+  `engine.matrix(...)` / `engine.recommendBP(...)` to make the
+  M1/M2/M3 "done when" criteria runnable from a copy-paste.
 - Speed-tie handling: `speedTiers` is a stable sort; it does *not* model
   the 50/50 coin flip. Surface ties to the report layer when M3 lands so
   rationale text can call them out.
@@ -38,6 +39,9 @@ M2 — KO matrix + speed tiers
   `pokemon.moves`. Once `priors` lands (M4), iterate over kit candidates
   per opp mon and aggregate; matrix shape is already cell-list-of-moves
   so the change is additive.
+- `pva.config.ts` ships with `scoreWeights` only in M3; the other
+  tunables (`format`, `sheetMode`, `priorsCacheTtl`, `claudeModel`) are
+  scaffolded as TODO-typed and left to their respective milestones.
 
 ## Known gaps
 - No SP→stat conversion yet; calc currently uses vanilla Gen 9 EV math.
@@ -52,3 +56,6 @@ M2 — KO matrix + speed tiers
   with Booster Energy, Protosynthesis). Add when those abilities show
   up in real M-A scoring scenarios; matrix already passes field state
   to `@smogon/calc` for damage purposes.
+- M3 scoring uses a single concrete opp kit per mon. Set-priors
+  integration (weighting score across candidate kits per opp mon)
+  lands in M4.
