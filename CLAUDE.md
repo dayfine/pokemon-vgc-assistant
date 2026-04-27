@@ -43,12 +43,26 @@ development).
 The three layers, per the harness contract:
 
 - **`reusable`** — generic harness files copied verbatim from upstream.
-  Do not edit; edits cause sync drift. Sync via
-  `bin/agent-harness sync` (when adopted).
+  Do not edit; edits cause sync drift.
 - **`template`** — skeletons that consuming projects fill in (e.g.
   `feat-agent-template.md`).
 - **`project`** — pva-specific (this repo only). All authority files,
   `feat-<track>.md` agents, and `dev/status/*` belong here.
+
+### Syncing from upstream
+
+Only `bin/agent-harness-check.sh` is vendored locally (the
+`Harness Check` CI workflow runs it directly). The other harness CLI
+scripts are not vendored — run them from a temp clone:
+
+```sh
+cd /tmp && git clone --depth 1 https://github.com/dayfine/agent-harness
+cd ~/Projects/pokemon-vgc-assistant
+sh /tmp/agent-harness/bin/agent-harness sync
+```
+
+`sync` walks `harness: reusable` files and prompts y/N/skip per drift.
+Pin a specific upstream tag via `AGENT_HARNESS_TAG=v0.1.0`.
 
 When discovering your role, read `.agents/agents/*.md` for agent
 definitions and `.agents/rules/*.md` for rule files. Agent files are
