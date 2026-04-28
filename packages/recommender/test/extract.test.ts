@@ -54,7 +54,7 @@ describe('recommend — mock-replay (Tabuyo Charizard X vs Vibe)', () => {
     expect(rec.bring).toEqual(['Charizard', 'Sneasler', 'Sinistcha', 'Incineroar']);
     expect(receivedPrompt).toBeDefined();
     expect(receivedPrompt).toContain('## My team');
-    expect(receivedPrompt).toContain('Tabuyo'.length === 6 ? 'Charizard' : 'never');
+    expect(receivedPrompt).toContain('Charizard');
     expect(receivedModel).toBe('claude-sonnet-4-6');
   });
 

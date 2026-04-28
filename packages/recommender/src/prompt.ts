@@ -88,11 +88,10 @@ function teamSection(label: string, team: TeamSet, side: 'my' | 'opp'): string {
 
 function formatSet(pokemon: TeamSet[number], side: 'my' | 'opp'): string {
   const moves = (pokemon.moves ?? []).filter((m) => Boolean(m)).join(' / ');
-  const evs = pokemon.evs as Record<string, number> | undefined;
   const evParts: string[] = [];
-  if (evs !== undefined) {
-    for (const [stat, val] of Object.entries(evs)) {
-      if (typeof val === 'number' && val > 0) {
+  if (pokemon.evs !== undefined) {
+    for (const [stat, val] of Object.entries(pokemon.evs)) {
+      if (val > 0) {
         evParts.push(`${val} ${stat}`);
       }
     }
@@ -159,10 +158,14 @@ function damageMatrixSection(
       const twohkos: string[] = [];
       for (const cell of cells) {
         for (const mu of cell.matchups) {
-          const note = mu.damage.notation;
-          if (mu.damage.koChance === 1 && note.includes('OHKO')) {
+          // Prefer the structured M3.5 outcome payload; fall back to the
+          // M3 string-parse path when matchups predate the probability
+          // layer (synthetic test matrices, mainly).
+          const pOhko = mu.outcome?.pOhko ?? (mu.damage.koChance === 1 ? 1 : 0);
+          const pTwoHko = mu.outcome?.pTwoHko ?? (mu.damage.notation.includes('2HKO') ? 1 : 0);
+          if (pOhko >= 0.5) {
             ohkos.push(mu.move.name);
-          } else if (note.includes('2HKO') && !note.includes('OHKO')) {
+          } else if (pTwoHko >= 0.5) {
             twohkos.push(mu.move.name);
           }
         }

@@ -11,9 +11,16 @@ import type { Format, TeamSet } from '@pva/engine';
  *
  * Coverage policy: M6.5.0 ships ≥10 facts spanning M-A's top-played
  * species (Sneasler, Annihilape, Indeedee-F, Incineroar, Charizard X,
- * Sinistcha, Tyranitar, Milotic, Mewtwo, Volcarona, Garchomp). M6.5.1
- * expands to ≥30. PRs that add facts are routine maintenance and don't
- * count against architecture review.
+ * Sinistcha, Tyranitar, Milotic, Volcarona, Garchomp). M6.5.1 expands
+ * to ≥30. PRs that add facts are routine maintenance and don't count
+ * against architecture review.
+ *
+ * Legality: every species/ability/move/item referenced here must be
+ * legal in Reg M-A (per `dev/research/champions-2026-04-26.md`). All
+ * Legendaries are banned in M-A — that excludes Mewtwo, the Forces of
+ * Nature (Landorus-Therian etc.), the Tapus, Cresselia, and others.
+ * Predicates referencing banned mons are dead branches; vision validates
+ * legality upstream so they can never fire on real input.
  */
 export interface Fact {
   readonly key: string;
@@ -55,14 +62,14 @@ export const FACTS: readonly Fact[] = [
     key: 'annihilape-defiant-vs-intimidate',
     applies: (myTeam, oppTeam) =>
       teamHas(oppTeam, 'Annihilape') &&
-      teamHasAny(myTeam, ['Incineroar', 'Landorus-Therian', 'Salamence', 'Arcanine', 'Hitmontop']),
+      teamHasAny(myTeam, ['Incineroar', 'Salamence', 'Arcanine', 'Hitmontop']),
     text: 'Annihilape commonly runs Defiant — DO NOT bring Intimidate users into it; Intimidate triggers Defiant for +2 Attack and snowballs Rage Fist.',
   },
   {
     key: 'milotic-competitive-vs-intimidate',
     applies: (myTeam, oppTeam) =>
       teamHas(myTeam, 'Milotic') &&
-      teamHasAny(oppTeam, ['Incineroar', 'Landorus-Therian', 'Arcanine', 'Salamence', 'Hitmontop']),
+      teamHasAny(oppTeam, ['Incineroar', 'Arcanine', 'Salamence', 'Hitmontop']),
     text: 'Milotic Competitive turns opp Intimidate into a +2 Special Attack boost — incentivizes leading Milotic into Intimidate-heavy opp leads.',
   },
   {
@@ -76,7 +83,6 @@ export const FACTS: readonly Fact[] = [
         'Garchomp',
         'Lucario',
         'Gyarados',
-        'Mewtwo',
       ]),
     text: "Sneasler Coaching gives an ally +1 Attack / +1 Defense — the standard 3-turn setup pattern is Fake Out → Coaching → Dragon Dance / setup move on a Mega-evolved partner. Coaching's +1 Defense materially shifts physical OHKO thresholds (e.g. Garchomp Stone Edge into +1 Charizard X drops from guaranteed to rollable).",
   },
@@ -105,8 +111,6 @@ export const FACTS: readonly Fact[] = [
         'Charizardite X',
         'Charizardite Y',
         'Tyranitarite',
-        'Mewtwonite X',
-        'Mewtwonite Y',
         'Salamencite',
         'Garchompite',
         'Lucarionite',
@@ -131,8 +135,7 @@ export const FACTS: readonly Fact[] = [
   },
   {
     key: 'trick-room-flip-fallback',
-    applies: (myTeam) =>
-      teamHasAny(myTeam, ['Sinistcha', 'Hatterene', 'Indeedee-F', 'Cresselia', 'Porygon2']),
+    applies: (myTeam) => teamHasAny(myTeam, ['Sinistcha', 'Hatterene', 'Porygon2']),
     text: 'Trick Room reverses turn order for 5 turns — the slowest mon moves first. Common as a Plan B when the fast lead pair is unfavorable; lead the TR setter + a slow attacker (or Fake Out user to buy a turn).',
   },
   {
@@ -140,12 +143,6 @@ export const FACTS: readonly Fact[] = [
     applies: (_myTeam, oppTeam) =>
       teamHas(oppTeam, 'Volcarona') && teamHasAny(oppTeam, ['Charizard', 'Torkoal', 'Ninetales']),
     text: 'Opp Volcarona + sun setter is a Quiver Dance win condition — under sun, Heat Wave / Fiery Dance damage spikes and Volcarona shrugs off priority. Pressure Volcarona before it gets a Quiver Dance off; Rock-type priority (Rock Slide / Stone Edge) is the standard answer.',
-  },
-  {
-    key: 'mewtwo-mega-x-bullet-punch-tech',
-    applies: (myTeam, oppTeam) =>
-      teamHas(oppTeam, 'Mewtwo') && teamHasAny(myTeam, ['Sinistcha', 'Hatterene', 'Tapu Lele']),
-    text: "Mega Mewtwo-X with Bullet Punch is the standard answer to Psychic-immune ghost mons (Sinistcha, Mimikyu). If your Sinistcha is holding Coba Berry or a Steel resist, that's likely the intended Mewtwo insurance — check the item before assuming OHKO.",
   },
   {
     key: 'charizard-x-dragon-dance-archetype',

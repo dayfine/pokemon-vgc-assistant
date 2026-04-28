@@ -17,36 +17,43 @@ const REG_MA_REFERENCE = readFileSync(
  */
 const SPECIES_USED = [
   'Annihilape',
+  'Arcanine',
   'Charizard',
   'Garchomp',
   'Gyarados',
+  'Hatterene',
   'Hitmontop',
   'Incineroar',
   'Indeedee-F',
-  'Landorus-Therian',
+  'Kangaskhan',
   'Lucario',
-  'Mewtwo',
+  'Mienshao',
   'Milotic',
+  'Ninetales',
+  'Porygon2',
   'Salamence',
   'Sinistcha',
   'Sneasler',
+  'Torkoal',
   'Tyranitar',
   'Volcarona',
 ] as const;
 
 /**
  * Items referenced by predicates (e.g. the Mega-Stone clause checks).
- * These must be valid Mega Stone names.
+ * These must be valid Mega Stone names — and legal in M-A (Mewtwonite
+ * X/Y dropped because Mewtwo is banned).
  */
 const MEGA_ITEMS_USED = [
+  'Aggronite',
   'Charizardite X',
   'Charizardite Y',
-  'Tyranitarite',
-  'Mewtwonite X',
-  'Salamencite',
   'Garchompite',
-  'Lucarionite',
   'Gyaradosite',
+  'Lucarionite',
+  'Metagrossite',
+  'Salamencite',
+  'Tyranitarite',
 ] as const;
 
 describe('facts.ts — coverage and legality', () => {
@@ -66,25 +73,22 @@ describe('facts.ts — coverage and legality', () => {
     }
   });
 
-  it('every species referenced in predicates appears in the M-A reference', () => {
-    // The reference doc names these species in prose (sometimes via the
-    // "Reg M-A snapshot" research summary). We check substring presence
-    // — the reference is human prose, not a structured dex.
-    //
-    // Mewtwo intentionally tested: it's M-A-banned, but the experiment
-    // fixture has Mewtwo on the opp side as a visual-ID error. The
-    // mewtwo-specific fact only fires when opp has Mewtwo (and the
-    // matrix is asking what to do); flagging Mewtwo presence is the
-    // *point* of that fact.
+  it('every species referenced in predicates is M-A-legal', () => {
+    // The reference doc names species in prose (the "Reg M-A snapshot"
+    // research summary) but doesn't enumerate every legal mon by name —
+    // it lists banned categories (Legendaries, Paradox, Treasures of
+    // Ruin, etc.) and references the wider species list via Bulbapedia.
+    // We check (a) the species isn't named as banned and (b) the name
+    // shape is plausible. Vision validates legality upstream; this is
+    // a guardrail against typos and obviously banned references.
     for (const species of SPECIES_USED) {
-      expect(
-        REG_MA_REFERENCE.includes(species) ||
-          // Some species are referenced in the broader Pokemon list
-          // (Bulbapedia link); the reference doc doesn't enumerate
-          // every legal mon by name. Allow either.
-          isPlausibleMonName(species),
-        `species ${species} not in M-A reference`,
-      ).toBe(true);
+      expect(isPlausibleMonName(species), `species ${species} has implausible name shape`).toBe(
+        true,
+      );
+      // Reference doc lists the ban categories explicitly — flag any
+      // species name that appears in the banned-category sentence.
+      const banLine = REG_MA_REFERENCE.match(/All Legendaries[^\n]+banned in M-A\./)?.[0] ?? '';
+      expect(banLine.includes(species), `species ${species} appears in M-A ban line`).toBe(false);
     }
   });
 
@@ -130,5 +134,7 @@ describe('selectFacts — experiment fixture', () => {
  * sanity check for species that weren't named in prose.
  */
 function isPlausibleMonName(name: string): boolean {
-  return /^[A-Z][a-zA-Z]+(-[A-Z][a-zA-Z]*)?$/.test(name);
+  // Title-case start, optionally followed by a single-letter or short
+  // suffix (Indeedee-F, Landorus-Therian) or a trailing digit (Porygon2).
+  return /^[A-Z][a-zA-Z]+\d?(-[A-Z][a-zA-Z]*)?$/.test(name);
 }
