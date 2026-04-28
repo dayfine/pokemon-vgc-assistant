@@ -3,13 +3,25 @@
 ## Last updated: 2026-04-28
 
 ## Status
-NOT_STARTED
+READY_FOR_REVIEW
 
 ## Current milestone
 M6.5.0 — recommender package, simple slice
 
 ## Completed
-(none — track initialised in scaffolding PR; no code shipped yet)
+- **M6.5.0 simple slice** (PR #23) — scaffolded
+  `packages/recommender/` per `dev/plans/06-recommender-design.md`:
+  `recommend()` public entry with mocked-client + injected-client
+  tests against the 2026-04-28 experiment fixture, 13 hand-curated
+  facts in `facts.ts` (>= 10 floor), prompt builder with role/format/
+  team/notes/matrix/baseline/task/schema sections, inline snapshot
+  pinned for the role and output-schema sections, hand-rolled JSON
+  schema validator with typed `RecommenderError` (`invalid-json` |
+  `schema-mismatch` | `illegal-species` | `api-error`) on every
+  malformed-input path, opt-in live-call test gated on
+  `RUN_LIVE_TESTS=1`. Anthropic SDK (`^0.65.0`) added as the only new
+  runtime dep; `process.env` access scoped to `client.ts`; format ID
+  literal scoped to `prompt.ts` `FORMAT_RULES` map.
 
 ## In Progress
 (none)
@@ -18,14 +30,6 @@ M6.5.0 — recommender package, simple slice
 (none)
 
 ## Follow-up
-- **M6.5.0 simple slice** — scaffold `packages/recommender/` per
-  `dev/plans/06-recommender-design.md` §"Module shape": `recommend()`
-  public entry, mocked-client tests using the 2026-04-28 experiment
-  fixture, ≥10 hand-curated facts in `facts.ts`, prompt snapshot pinned
-  per format, schema validation rejects malformed JSON. Done when the
-  fixture replay produces a valid `AgentRecommendation` and an opt-in
-  live test (`RUN_LIVE_TESTS=1`) hits the API and produces a plausible
-  recommendation (manually graded).
 - **M6.5.1 facts expansion** — broaden `facts.ts` to ≥30 M-A species'
   ability/move tactical interactions; add format-rotation handling
   (per-format facts subsetting).

@@ -79,6 +79,15 @@ These are structural because the package layout enforces them:
 - Hard cap: 1000 LOC. Above that, qc-structural rejects on sizing alone.
 - One module per PR is the preferred shape; module = `(src/foo.ts,
   test/foo.test.ts)` plus type additions.
+- **Scaffolding carve-out.** A PR that introduces a new package skeleton
+  (the first slice of a track — types + minimal public surface + tests)
+  may exceed the soft cap and, with explicit PR-body justification, the
+  hard cap. The carve-out applies only when one-module-per-PR can't —
+  i.e. the package isn't usable until several files land together
+  (types ↔ schema ↔ public entry point ↔ fixture-driven tests).
+  Subsequent slices revert to the standard caps. Document the
+  justification in the PR body and link the design doc that frames
+  the slice.
 
 ## What qc-structural does NOT enforce
 
