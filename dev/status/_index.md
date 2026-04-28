@@ -12,8 +12,9 @@ agent definition.
 
 ## Tracks not yet started
 
-| Track   | Will own                              | Starts after | Design docs |
-|---------|---------------------------------------|--------------|-------------|
-| vision  | M5 — vision input                     | M3 landed (it has; parallel-able with priors) | — |
-| cli     | M6 — `pva` CLI                        | M5 lands     | — |
-| web     | M7 — interactive UI                   | M6 lands     | — |
+| Track         | Will own                                      | Starts after | Design docs |
+|---------------|-----------------------------------------------|--------------|-------------|
+| vision        | M5 — vision input                             | M3 landed (it has; parallel-able with priors) | (sibling design doc TBD; see `dev/research/champions-ui-team-preview-2026-04-28.md` for UI implications) |
+| live-capture  | M5.5 — Electron capture-card frontend         | M5 lands (vision.extract callable) | `dev/plans/04-live-capture.md`, `dev/research/champions-ui-team-preview-2026-04-28.md` |
+| cli           | M6 — `pva` CLI                                | M5 lands     | — |
+| web           | M7 — interactive UI                           | M6 lands     | — |
