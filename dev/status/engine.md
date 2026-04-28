@@ -41,6 +41,19 @@ only for further M-track follow-ups or v2 work.
     qc-followups slice to a `toEqual(rankedSummary(...))` identity
     assertion across the full RankedPicks output.
 
+## Follow-up (engine)
+- Engine M3/M3.5 scenario tests use Tornadus, Iron Hands, Calyrex-Shadow,
+  and Flutter Mane on my-team / opp-team for scoring-math testing.
+  Strictly these are M-A-banned (Legendary, Paradox, Restricted), but
+  engine deliberately doesn't validate format — the tests pin scoring
+  math, not legality. Cleanup to use M-A-legal species is a follow-up
+  slice when engine adopts legality validation (likely when `@pkmn/dex`
+  ships gen9champions data).
+- `pickedOutspeedOpp` ignores per-kit speed deltas (Choice Scarf,
+  ability-driven multipliers). Speed comparison currently uses the
+  slot's `representative` Pokemon. Designed-out separately —
+  see PR forthcoming for the kit-aware-speed slice.
+
 ## In Progress
 (none)
 

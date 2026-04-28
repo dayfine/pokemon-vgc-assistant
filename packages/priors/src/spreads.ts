@@ -117,13 +117,10 @@ export const ITEM_BUCKET_HINTS: Readonly<Record<string, BucketHint>> = {
  * — add the species and its legal abilities; adding without verifying
  * against Showdown is a behavioral finding.
  *
- * One open question (deferred to the positive-allow-list slice): Tornadus
- * (Forces of Nature, Unova) is included because the M4.5 stat distribution
- * includes it, but its M-A legality is not yet verified against the live
- * Champions mod data — research doc says "All Legendaries banned" while
- * the Showdown format definition has no explicit banlist (inherits from
- * 'Flat Rules' + the `champions` mod). When `@pkmn/dex` ships gen9champions
- * data, replace this entire table with a runtime lookup.
+ * When `@pkmn/dex` ships gen9champions data, replace this entire table
+ * with a runtime lookup. Until then, every entry must reflect a species
+ * legal in M-A — no Restricted, Paradox, Legendary, or Treasure-of-Ruin
+ * mons (per research doc).
  */
 export const LEGAL_ABILITIES: Readonly<Record<string, readonly string[]>> = {
   // M4-simple fixture species (verified against Pikalytics Featured Teams)
@@ -138,7 +135,6 @@ export const LEGAL_ABILITIES: Readonly<Record<string, readonly string[]>> = {
   Rillaboom: ['Overgrow', 'Grassy Surge'],
   Amoonguss: ['Effect Spore', 'Regenerator'],
   Dragonite: ['Inner Focus', 'Multiscale'],
-  Tornadus: ['Prankster', 'Defiant'], // legality in M-A unverified — see above
   Tyranitar: ['Sand Stream', 'Unnerve'],
   Annihilape: ['Vital Spirit', 'Inner Focus', 'Defiant'],
 };

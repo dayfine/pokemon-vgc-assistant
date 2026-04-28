@@ -105,7 +105,7 @@ describe('outcomeProbability: boundary behaviour', () => {
       kit({ species: 'Incineroar', nature: 'Impish', evs: { hp: 252, def: 252 } }),
       kit({ species: 'Amoonguss', nature: 'Bold', evs: { hp: 252, def: 252 } }),
       kit({ species: 'Archaludon', nature: 'Impish', evs: { hp: 252, def: 252 } }),
-      kit({ species: 'Tornadus', nature: 'Timid', evs: { hp: 252, spe: 252 } }),
+      kit({ species: 'Whimsicott', nature: 'Timid', evs: { hp: 252, spe: 252 } }),
     ];
     const move = new Move(gen, 'Earthquake');
     for (const d of defenders) {
@@ -147,13 +147,13 @@ describe('outcomeProbability: monotonicity in defender bulk', () => {
 
 describe('outcomeProbability: distribution-shape sanity', () => {
   it('Garchomp (80% offensive-physical) has higher P(OHKO) than Incineroar (70% bulky-physical) on the same matchup', () => {
-    // Both attacking the same target (a squishy Tornadus). Garchomp's
+    // Both attacking the same target (a squishy Whimsicott). Garchomp's
     // distribution puts most mass on the offensive-physical bucket whose
     // 252 Atk Adamant produces the highest Atk stat for the species; that
     // should give a higher OHKO rate than Incineroar's bulky-leaning
     // distribution at the same defender.
     const defender = kit({
-      species: 'Tornadus',
+      species: 'Whimsicott',
       ability: 'Prankster',
       nature: 'Timid',
       evs: { hp: 4, spe: 252 },
@@ -180,7 +180,7 @@ describe('outcomeProbability: distribution-shape sanity', () => {
     const inciR = outcomeProbability(gen, inciKit, defender, inciMove, 'Incineroar', DOUBLES_FIELD);
 
     // Garchomp's offensive-physical mass is 0.8 vs. Incineroar's 0.2; both
-    // at full Atk with Choice Band + good base stat should OHKO Tornadus,
+    // at full Atk with Choice Band + good base stat should OHKO Whimsicott,
     // so the *integrated* P(OHKO) reflects the mass weighting.
     expect(garR.pOhko).toBeGreaterThanOrEqual(inciR.pOhko);
   });
