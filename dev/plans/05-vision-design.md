@@ -284,6 +284,51 @@ requirement.
   fields, wrong types, illegal species).
 - Prompt snapshot test (one per sheetMode) so changes are deliberate.
 
+## API key & cost
+
+### Three-tier key handling
+
+| Context | Where the key lives | How it's loaded |
+|---|---|---|
+| **CI** | GitHub Actions repo secret `ANTHROPIC_API_KEY` | Workflow job adds `env: ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}` to whichever step runs live tests. Existing `pnpm-test.yml` does NOT pipe it; the slice that adds live tests must add the env block. |
+| **Local dev** | `.env` at repo root (already gitignored via `.env` line in `.gitignore`) | `dotenv` loads it at process start. Each developer supplies their own key. |
+| **M5.5 end-user app** | OS keychain via `keytar` (or platform-native Electron API) | Prompted on first run; persisted across sessions. End users supply *their own* key, not the project owner's. |
+
+Why split: repo secret keeps CI testable without exposing the key in
+git history; local `.env` preserves individual developer control;
+end-user split prevents free-rider key sharing once we ship binaries.
+
+### Default = mocked client
+
+- Every committed test injects a mock Anthropic client with a recorded
+  JSON response. `pnpm test` works offline and never spends real
+  money.
+- Live calls are gated behind a `RUN_LIVE_TESTS=1` opt-in flag *plus*
+  the key being present. CI runs them on a scheduled cron (weekly) to
+  catch model-drift regressions, not on every PR.
+- The opt-in pattern means a lost key, a missing secret, or a forgotten
+  `.env` never breaks the test suite — they break the live-only path.
+
+### Cost ceiling
+
+Claude Vision on a 1280×720 JPEG (~85% quality, ~150–250 KB):
+
+- Per call: ~$0.01–0.02 (image-input tokens dominate; species-list
+  output is tiny).
+- Per ranked session (~10 games): ~$0.10–0.20.
+- Per month at heavy single-user use (100 games): ~$1–2.
+- CI live-cron weekly: ~$0.05/month.
+
+Trivial for single-user. Document the per-call estimate in the
+package README so end users know what they're paying for.
+
+### Anthropic SDK
+
+`@anthropic-ai/sdk` is the canonical TypeScript client. Vision works
+through `messages.create` with `image` content blocks (base64 or URL
+input; we use base64 from the captured frame Buffer). Confirm the
+installed SDK version supports image input cleanly during M5 dispatch.
+
 ## Open questions
 
 1. **Closed-sheet fixture collection.** Need a real ranked-ladder
@@ -291,22 +336,16 @@ requirement.
    M5 dispatch should explicitly ask the user to provide one, or
    simulate by cropping the open-sheet fixture's opp side and
    stripping item icons.
-2. **Anthropic SDK choice.** `@anthropic-ai/sdk` is the canonical
-   client. Vision works through `messages.create` with image-content
-   blocks. Confirm the SDK version supports image input cleanly.
-3. **Cost per extraction.** Claude Vision pricing on a 1280×720 image
-   is small (~$0.01 per call). For ranked-ladder use (one extraction
-   per game) that's negligible. Document the cost in the README.
-4. **Confidence threshold for retry.** When the model returns
+2. **Confidence threshold for retry.** When the model returns
    `confidence: low`, do we auto-retry with a more aggressive prompt?
    Or surface to the user? v1 surfaces; M5.6 could add auto-retry.
-5. **Move-set extraction at open sheet.** The fixture shows item +
+3. **Move-set extraction at open sheet.** The fixture shows item +
    ability for opp under open sheet but moves require zooming into the
    per-mon detail screen. Verify behaviour: does the team-preview
    screen show all 4 moves at once for opp under open sheet, or do
    the user / app need to navigate to per-mon screens? **Outstanding
    research item — do not block M5 simple slice on this.**
-6. **Stat overrides.** Once SP→stat conversion lands (separate slice),
+4. **Stat overrides.** Once SP→stat conversion lands (separate slice),
    open-sheet extraction could include stat data if visible on the
    in-game preview screen. v1 leaves stats unaddressed (they're not
    visible at team preview anyway).
