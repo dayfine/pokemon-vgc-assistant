@@ -81,17 +81,21 @@ tagged with their layer in the YAML frontmatter `harness:` field.
   fixture conventions. Pairs with the reusable
   `.agents/agents/qc-behavioral.md`.
 
-### Workflow status (as of bootstrap)
+### Workflow status
 
 - `Harness Check` (`.github/workflows/harness-check.yml`) — **enabled**;
-  lints frontmatter on every PR.
-- `Daily orchestrator` — **disabled**. The shipped reusable workflow
-  references a `trading-devcontainer` image that does not exist for
-  this project; it would also fail because `lead-orchestrator.md` (also
-  reusable) reads trading-system status files that do not exist here.
-  Re-enable only after writing a pva-specific orchestrator path. See
-  the bootstrap PR for context.
-- `Weekly deep health scan` — **disabled** for the same image reason.
+  lints frontmatter on every PR (project layer).
+- `pnpm test` (`.github/workflows/pnpm-test.yml`) — **enabled**;
+  build + test + lint on push to main and on every PR.
+
+The harness's reusable `Daily orchestrator` and `Weekly deep health
+scan` workflows were intentionally removed. They were trading-system
+specific (referenced a `trading-devcontainer` image, jj VCS, and the
+`lead-orchestrator` / `health-scanner` agents that don't apply here).
+For pva's single-developer cadence the autonomous-loop pattern
+(`ScheduleWakeup` + on-demand `pva-orchestrator` runs) covers the same
+use case more responsively. Re-introduce a pva-specific orchestrator
+workflow only if cron-driven background runs become valuable.
 
 ## Project conventions
 
