@@ -34,7 +34,15 @@
 //   doubling — all real strategy, none modeled. v1 plan acknowledges
 //   this as a hard bound on score's expressiveness.
 
-import { Field, Pokemon, getGeneration, recommendBP } from '../packages/engine/dist/index.js';
+import {
+  Field,
+  Pokemon,
+  getGeneration,
+  matrix,
+  recommendBP,
+  score,
+  speedTiers,
+} from '../packages/engine/dist/index.js';
 
 // Inlined from pva.config.ts (the .ts file isn't a usable runtime import
 // without compilation; v1 demo).
@@ -189,6 +197,61 @@ const ranked = recommendBP(gen, myTeam, oppTeam, config.scoreWeights, {
   topK: 5,
 });
 
+// ---- Lead-pair scoring: per-bring, find the best opening 2 of 4 ----
+//
+// Iteration on top of recommendBP that addresses "no lead-pair distinction"
+// from the v1 score limitations. For each ranked bring, enumerate the
+// C(4, 2) = 6 lead pairs and score each. The "best lead" is the pair with
+// the highest score under leadWeights (roleGap zeroed, since back-2 cover
+// roles).
+//
+// Honest caveats (v1 — these are real flaws, not nits):
+// - **Score isn't size-normalized.** The same `engine.score` used for
+//   full-bring scoring is reused with a 2-pair as `combo`. So "both
+//   leads die" reads identically to "half of a bring dies" — both
+//   contribute oppKoPicked=2 with the same -ve weight. A purpose-built
+//   lead-pair scorer would weight oppKoPicked relative to combo size,
+//   or be a different metric altogether.
+// - **No back-2 model.** Lead-pair score is "lead vs full opp team",
+//   ignoring that the back-2 are still alive after the leads. A real
+//   lead-pair model would consider lead-vs-lead trade outcomes
+//   separately from back-line bring quality.
+// - **No synergy capture.** Coaching → Charizard sweep, Trick Room flip,
+//   Fake Out + setup, redirection — none of these show up.
+// - **No opp-lead enumeration yet.** We're scoring "my lead vs FULL opp
+//   team", not "my lead vs assumed opp lead pair". The next iteration
+//   on top of this enumerates C(6,2)=15 opp lead pairs and surfaces
+//   "if opp leads X+Y, your best lead is A+B". Flagged at the end of
+//   the script.
+const m = matrix(gen, myTeam, oppTeam, { field: DOUBLES });
+const speedInputs = [
+  ...myTeam.map((p) => ({ pokemon: p, side: 'my' })),
+  ...oppTeam.map((p) => ({ pokemon: p, side: 'opp' })),
+];
+const sp = speedTiers(speedInputs);
+const leadWeights = { ...config.scoreWeights, roleGap: 0 };
+
+function combos2(arr) {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    for (let j = i + 1; j < arr.length; j++) {
+      out.push([arr[i], arr[j]]);
+    }
+  }
+  return out;
+}
+
+function bestLeadPair(combo) {
+  let best = { pair: null, total: Number.NEGATIVE_INFINITY, scored: null };
+  for (const pair of combos2(combo)) {
+    const s = score(pair, oppTeam, m, sp, leadWeights);
+    if (s.total > best.total) {
+      best = { pair, total: s.total, scored: s };
+    }
+  }
+  return best;
+}
+
 // ---- Pretty-print ----
 console.log('=== Demo: champions-team-preview-zh-tw-2026-04-28-001.jpg ===\n');
 console.log('My team (6):  ', myTeam.map((p) => p.name).join(', '));
@@ -200,9 +263,17 @@ for (let i = 0; i < ranked.picks.length; i++) {
   const pick = ranked.picks[i];
   const combo = pick.combo.map((p) => p.name).join(' + ');
   const b = pick.score.breakdown;
+  const lead = bestLeadPair(pick.combo);
+  const leadNames = lead.pair.map((p) => p.name).join(' + ');
+  const back = pick.combo.filter((p) => !lead.pair.includes(p));
+  const backNames = back.map((p) => p.name).join(' + ');
+  const lb = lead.scored.breakdown;
+
   console.log(`#${i + 1}  total=${pick.score.total.toFixed(2)}`);
   console.log(`    combo:    ${combo}`);
-  console.log('    breakdown:');
+  console.log(`    lead:     ${leadNames}   (lead-score=${lead.total.toFixed(2)})`);
+  console.log(`    back:     ${backNames}`);
+  console.log('    bring breakdown:');
   console.log(
     `      pickedKoOpp:        ${b.pickedKoOpp.toFixed(2)}  (× ${config.scoreWeights.ohkoThreats})`,
   );
@@ -216,5 +287,16 @@ for (let i = 0; i < ranked.picks.length; i++) {
     `      oppKoPicked:        ${b.oppKoPicked.toFixed(2)}  (× -${config.scoreWeights.ohkoTaken})`,
   );
   console.log(`      unfilledRoles:      ${b.unfilledRoles}  (× -${config.scoreWeights.roleGap})`);
+  console.log('    lead breakdown (back-2 not modeled, roleGap weight zeroed):');
+  console.log(`      pickedKoOpp:        ${lb.pickedKoOpp.toFixed(2)}`);
+  console.log(`      pickedOutspeedOpp:  ${lb.pickedOutspeedOpp.toFixed(2)}`);
+  console.log(`      pickedSurvivesOpp:  ${lb.pickedSurvivesOpp.toFixed(2)}`);
+  console.log(`      oppKoPicked:        ${lb.oppKoPicked.toFixed(2)}`);
   console.log('');
 }
+
+console.log(
+  '\nFollow-up not yet in the demo: enumerate opp lead pairs (C(6,2)=15)\n' +
+    'and for each, recommend our best lead in response. That gets us to true\n' +
+    '"if opp leads X+Y, lead A+B". Sketched in the script header.',
+);
