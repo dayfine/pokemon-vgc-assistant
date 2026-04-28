@@ -3,10 +3,11 @@
 ## Last updated: 2026-04-27
 
 ## Status
-READY_FOR_REVIEW
+MERGED
 
 ## Current milestone
-M3.5 — matrix kit-cells / outcomeProbability integration
+None — engine track is feature-complete for v1 through M3.5. Re-open
+only for further M-track follow-ups or v2 work.
 
 ## Completed
 - M1: engine skeleton + calc wrapper + 5 pinned Gen 9 calcs (PR #2, merged)
@@ -18,31 +19,30 @@ M3.5 — matrix kit-cells / outcomeProbability integration
   − (role gaps). Weights live in `pva.config.ts` (new, repo root); engine
   owns the `ScoreWeights` type but never reads the file. Three hand-graded
   scenarios + four guard-semantics unit tests. (PR #8, merged.)
-
-## In Progress
-- M3.5 (this PR) — matrix-payload swap to KitCells + OutcomeProbability.
-  - Matrix `cells[a][d]` becomes `readonly KitCell[]` on **both** sides
-    (each KitCell = `{ weight, kit, matchups }`); each `Matchup` carries
+- M3.5: matrix-payload swap to KitCells + OutcomeProbability (PR #14, merged).
+  - Matrix `cells[a][d]` is `readonly KitCell[]` on both sides (each
+    KitCell = `{ weight, kit, matchups }`); each `Matchup` carries
     an optional `OutcomeProbability` (`{ pOhko, pTwoHko }`). The kit-cell
-    axis enumerates *opp* kit candidates regardless of side: my-side
-    varies opp's defender kit, opp-side varies opp's attacker kit.
-  - `score`'s `pickedKoOpp` / `oppKoPicked` / `pickedSurvivesOpp` become
+    axis enumerates opp kit candidates regardless of side.
+  - `score`'s `pickedKoOpp` / `oppKoPicked` / `pickedSurvivesOpp` are
     real-valued expected counts under weighted aggregation across kit
-    cells. Fall back to a deterministic binary indicator when a `Matchup`
+    cells. Falls back to a deterministic binary indicator when a Matchup
     has no `outcome` payload — keeps M3 ordering tests stable.
   - New entry point `recommendBPFromSpecies(gen, myTeam, oppSlots,
     weights, options)` for closed-sheet input. Existing `recommendBP`
     still accepts concrete `TeamSet` opps and reduces to the same
-    KitCell shape with weight 1.0 per slot (M3 backwards-compat path).
+    KitCell shape with weight 1.0 per slot.
   - Dep direction: engine takes an injected
     `outcomeProbability: (input) => OutcomeProbability` function param
-    rather than runtime-importing `@pva/priors`. Caller (CLI / web)
-    passes `priors.outcomeProbability` through. Verified zero imports
-    of `@pva/priors` under `packages/engine/`.
-  - 22 engine tests pass (was 20); 2 new tests for the closed-sheet
-    path (`bp-species.test.ts`): single-kit reduction matches M3, and
-    a multi-kit aggregation produces non-integer breakdown counts that
-    prove the kit-cell aggregation is firing.
+    rather than runtime-importing `@pva/priors`.
+  - 22 engine tests pass (was 20). qc-behavioral noted the new
+    bp-species single-kit test asserted only `toContain('Urshifu')`
+    rather than deep-equal vs. the M3 path — tightened in the
+    qc-followups slice to a `toEqual(rankedSummary(...))` identity
+    assertion across the full RankedPicks output.
+
+## In Progress
+(none)
 
 ## Blocking refactors
 (none)

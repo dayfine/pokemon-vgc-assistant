@@ -52,11 +52,17 @@ M4.5 — threshold-probability layer
   use EV-equivalent buckets; SP path is a sibling slice (M3.5/M4.0).
   Threshold solver works on raw stat numbers, so it ports to SP cleanly
   once the EV→SP boundary lands.
-- **`LEGAL_ABILITIES` table** — still scoped to the five M4 fixture
+- ~~**`LEGAL_ABILITIES` table** — still scoped to the five M4 fixture
   species. The M4.5 stat distributions add 6 species without expanding
   the legality allow-list (the threshold solver doesn't go through
   `pickLegalAbility`); when the engine track moves to `@pkmn/dex`
-  gen9champions data, both tables collapse to the same lookup.
+  gen9champions data, both tables collapse to the same lookup.~~
+  **Coverage parity restored** in the qc-followups slice (PR forthcoming):
+  added Rillaboom, Amoonguss, Dragonite, Tornadus, Tyranitar, Annihilape.
+  Tornadus's M-A legality is still unverified — research doc says "All
+  Legendaries banned" but Showdown's Reg M-A format defn has no explicit
+  banlist. Resolves with the positive-allow-list slice once `@pkmn/dex`
+  ships gen9champions data.
 - **Distribution coverage expansion.** 11 species today; broaden to
   the full M-A top-30 once Pikalytics indices stabilise post-Indianapolis
   (Regionals 2026-05-29 will shift the meta).

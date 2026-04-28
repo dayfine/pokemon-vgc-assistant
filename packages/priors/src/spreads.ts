@@ -100,25 +100,45 @@ export const ITEM_BUCKET_HINTS: Readonly<Record<string, BucketHint>> = {
 };
 
 /**
- * Static legal-abilities table per species, scoped to the M4-simple fixture
- * coverage (see test/fixtures/pikalytics/). Each entry is the canonical
- * abilities a competitive set may run in `gen9championsvgc2026regma`,
- * cross-referenced against the Showdown data files and the Pikalytics
- * Featured Teams sections of the same fixtures.
+ * Static legal-abilities table per species. Each entry lists the abilities
+ * a competitive set may run in `gen9championsvgc2026regma`, cross-referenced
+ * against Showdown data and the Pikalytics Featured Teams sections of the
+ * fixtures.
  *
  * Pikalytics' raw "Common Abilities" data leaks abilities the species
  * cannot legally have (e.g. Whimsicott showing "Trace 0.343%"). Filtering
  * the parser output through this allow-list is what keeps the qc-behavioral
  * "every KitCandidate field is legal" rule satisfied.
  *
- * Extending coverage to a new species is one entry's worth of work — add
- * the species and its legal abilities; adding without verifying against
- * Showdown data is a behavioral finding.
+ * Coverage parity with `STAT_DISTRIBUTIONS` is maintained — every species
+ * referenced in the M4.5 stat-distribution table also appears here so a
+ * future fixture-driven `expand` call against any of them won't fall back
+ * to the empty allow-list. Extending coverage is one entry's worth of work
+ * — add the species and its legal abilities; adding without verifying
+ * against Showdown is a behavioral finding.
+ *
+ * One open question (deferred to the positive-allow-list slice): Tornadus
+ * (Forces of Nature, Unova) is included because the M4.5 stat distribution
+ * includes it, but its M-A legality is not yet verified against the live
+ * Champions mod data — research doc says "All Legendaries banned" while
+ * the Showdown format definition has no explicit banlist (inherits from
+ * 'Flat Rules' + the `champions` mod). When `@pkmn/dex` ships gen9champions
+ * data, replace this entire table with a runtime lookup.
  */
 export const LEGAL_ABILITIES: Readonly<Record<string, readonly string[]>> = {
+  // M4-simple fixture species (verified against Pikalytics Featured Teams)
   Incineroar: ['Blaze', 'Intimidate'],
   Whimsicott: ['Prankster', 'Infiltrator', 'Chlorophyll'],
   Sneasler: ['Pressure', 'Unburden', 'Poison Touch'],
   Archaludon: ['Stamina', 'Sturdy'],
   Garchomp: ['Rough Skin', 'Sand Veil'],
+  // M4.5 stat-distribution species (verified against vanilla Gen 9 Showdown
+  // data; gen9champions mod may add or remove abilities — re-verify when
+  // the mod ships in @pkmn/dex)
+  Rillaboom: ['Overgrow', 'Grassy Surge'],
+  Amoonguss: ['Effect Spore', 'Regenerator'],
+  Dragonite: ['Inner Focus', 'Multiscale'],
+  Tornadus: ['Prankster', 'Defiant'], // legality in M-A unverified — see above
+  Tyranitar: ['Sand Stream', 'Unnerve'],
+  Annihilape: ['Vital Spirit', 'Inner Focus', 'Defiant'],
 };
