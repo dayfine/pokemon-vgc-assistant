@@ -295,8 +295,73 @@ for (let i = 0; i < ranked.picks.length; i++) {
   console.log('');
 }
 
+// ---- Opp-lead scenarios: "if opp leads X+Y, you should lead A+B" ----
+//
+// Take the top recommended bring. Enumerate all C(6,2)=15 opp lead
+// pairs. For each, find the best my-lead-pair response by:
+//   1. Building a per-scenario matrix with my full myTeam vs JUST the
+//      opp-lead-pair (2 mons), so the matchup numbers are scoped to
+//      the actual leads on field.
+//   2. Scoring each of my-bring's C(4,2)=6 lead pairs against that
+//      2-mon opp slice using engine.score.
+//   3. Picking the highest-scoring my-lead.
+//
+// We then rank opp leads by their *threat level* (how often they're
+// expected to win the opening trade) — concretely, by the highest
+// score the operator can achieve against them. Lower-best-response
+// score = harder lead for us to handle = surface first.
+//
+// Honest caveats (same v1 score limits as above):
+// - score(...) on a 2v2 still doesn't model setup synergy or back-2
+//   trades. "Best response" here is just "best raw matchup numbers
+//   given an opp lead pair".
+// - We use a per-scenario matrix so the calc reflects only the 2 opp
+//   mons on field — but speed is still computed across full teams.
+//   That's fine: speed isn't kit-pair-coupled.
+const topBring = ranked.picks[0].combo;
+const oppLeadPairs = combos2(oppTeam);
+
+function bestMyLeadVsOppLead(oppLead) {
+  const scenarioMatrix = matrix(gen, topBring, oppLead, { field: DOUBLES });
+  const scenarioSpeedInputs = [
+    ...topBring.map((p) => ({ pokemon: p, side: 'my' })),
+    ...oppLead.map((p) => ({ pokemon: p, side: 'opp' })),
+  ];
+  const scenarioSpeed = speedTiers(scenarioSpeedInputs);
+  let best = { pair: null, total: Number.NEGATIVE_INFINITY, scored: null };
+  for (const myLead of combos2(topBring)) {
+    const s = score(myLead, oppLead, scenarioMatrix, scenarioSpeed, leadWeights);
+    if (s.total > best.total) {
+      best = { pair: myLead, total: s.total, scored: s };
+    }
+  }
+  return best;
+}
+
+const scenarios = oppLeadPairs.map((oppLead) => ({
+  oppLead,
+  best: bestMyLeadVsOppLead(oppLead),
+}));
+
+// Sort hardest-first: lowest "my best response" score = hardest lead for us.
+scenarios.sort((a, b) => a.best.total - b.best.total);
+
+console.log('\n--- Opp-lead scenarios for top bring ---');
+console.log(`Top bring: ${topBring.map((p) => p.name).join(' + ')}`);
 console.log(
-  '\nFollow-up not yet in the demo: enumerate opp lead pairs (C(6,2)=15)\n' +
-    'and for each, recommend our best lead in response. That gets us to true\n' +
-    '"if opp leads X+Y, lead A+B". Sketched in the script header.',
+  `Showing all ${scenarios.length} opp lead pairs, sorted hardest-first (lowest my-best-response score = hardest lead for us):\n`,
 );
+for (let i = 0; i < scenarios.length; i++) {
+  const s = scenarios[i];
+  const oppNames = s.oppLead.map((p) => p.name).join(' + ');
+  const myNames = s.best.pair.map((p) => p.name).join(' + ');
+  const b = s.best.scored.breakdown;
+  console.log(
+    `#${String(i + 1).padStart(2, ' ')}  if opp leads ${oppNames}` +
+      `\n      best response: ${myNames}` +
+      `  (lead-score=${s.best.total.toFixed(2)},` +
+      ` ko=${b.pickedKoOpp.toFixed(2)},` +
+      ` taken=${b.oppKoPicked.toFixed(2)},` +
+      ` outspeed=${b.pickedOutspeedOpp.toFixed(2)})`,
+  );
+}
