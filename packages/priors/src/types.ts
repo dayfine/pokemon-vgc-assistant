@@ -98,3 +98,38 @@ export interface KitCandidate {
   readonly weight: number;
   readonly bucket: StatBucket;
 }
+
+/**
+ * One bucket entry in a per-species plausible-stat distribution. `weight`
+ * is in [0, 1]; per the M4.5 design, the sum of weights across a species'
+ * `StatBucketWeight[]` is exactly 1.0 within ±1e-9. Asserted in test.
+ */
+export interface StatBucketWeight {
+  readonly weight: number;
+  readonly bucket: StatBucket;
+}
+
+/**
+ * Result of the threshold solver for a fixed (attacker_kit, defender_kit,
+ * move, field). `t1` is the smallest offensive stat value at which the
+ * attacker guarantees a 1HKO; `t2` is the smallest at which the attacker
+ * guarantees a 2HKO. Both are `Number.POSITIVE_INFINITY` when no value
+ * in the search range achieves the outcome.
+ *
+ * Stat values are post-nature, post-EV final numbers — the same scale as
+ * `Pokemon.rawStats.atk` / `rawStats.spa` from `@smogon/calc`.
+ */
+export interface ThresholdResult {
+  readonly t1: number;
+  readonly t2: number;
+}
+
+/**
+ * Probability of a (1HKO, 2HKO) outcome for a fixed defender kit, given
+ * uncertainty over the attacker's stat profile. Both values live in
+ * [0, 1]; `pTwoHko >= pOhko` always (a 1HKO is also a 2HKO).
+ */
+export interface OutcomeProbability {
+  readonly pOhko: number;
+  readonly pTwoHko: number;
+}

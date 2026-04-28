@@ -6,58 +6,68 @@
 READY_FOR_REVIEW
 
 ## Current milestone
-M4 — set priors, simple
+M4.5 — threshold-probability layer
 
 ## Completed
-- (this PR) M4 simple slice — `packages/priors/` scaffolded with the
+- M4 simple slice (PR merged) — `packages/priors/` scaffolded with the
   Pikalytics AI-endpoint client, Markdown parser, item-bucketed
   KitCandidate expansion, on-disk cache with mtime-based TTL, and the
   open-sheet collapse-to-known-kit code path. Five committed fixtures
-  under `test/fixtures/pikalytics/`. 21 tests passing.
+  under `test/fixtures/pikalytics/`.
+- (this PR) M4.5 threshold-probability layer — `solveThreshold`
+  (binary-search T1/T2 solver, ~9 calc calls per kit-pair), hand-curated
+  `STAT_DISTRIBUTIONS` covering 11 M-A-legal species, `outcomeProbability`
+  integrator producing `{ pOhko, pTwoHko }` cell payloads, and the
+  threshold cache (kit-fingerprint + field-fingerprint composite key,
+  format-stable, 30-day default TTL). 76 new tests, 97 priors tests
+  passing total.
 
 ## In Progress
-(none — awaiting review)
+(none — awaiting review on M4.5 PR)
 
 ## Blocking refactors
 (none)
 
 ## Follow-up
-- After this PR lands, the engine matrix cell payload should shift from
-  `Matchup[]` to `KitCell[] = { weight, matchups }[]` to carry per-kit
-  contributions through to `score`. That's an engine-track follow-up
-  (re-open the engine track for one slice), not a priors task.
-- The five-species fixture coverage substituted **Sneasler /
-  Archaludon / Garchomp** for the dispatch's originally-listed
-  Iron Hands / Calyrex-Shadow / Flutter Mane. The latter three are
-  banned in Reg M-A (Paradox + Restricted) so Pikalytics returns
-  HTTP 404 for them under the `championspreview` slug. The
-  substitutes are all top-10 species in M-A's `championspreview`
-  index. Note in the design doc / agent file if future dispatches
-  should pick from a format-aware species list to avoid this.
-- `LEGAL_ABILITIES` in `priors/src/spreads.ts` is a static fallback
-  table covering only the five fixture species. Replace with a
-  `@pkmn/dex` gen9champions lookup when the mod ships (mirrors the
-  same TODO already on `engine/src/data.ts`).
-- Pikalytics' "Common Abilities" data is contaminated for some species
-  (Whimsicott shows "Trace 0.343%", Sneasler shows "Pressure 1.763%"
-  even though featured-team data clearly indicates Prankster /
-  Unburden). The `pickLegalAbility` heuristic falls back to the
-  species' allow-listed top ability, but a long-term fix is to weight
-  Featured Teams' kits separately or email contact@pikalytics.com
-  about the data quality.
-- M4.5 — threshold-probability layer (binary search solver,
-  per-species plausible-stat distribution). See
-  `dev/plans/03-priors-design.md` §M4.5.
+- **Engine matrix-payload swap.** With `outcomeProbability` validated
+  in isolation, the next slice migrates the engine matrix cell payload
+  from `Matchup[]` to a real-valued representation that carries
+  `OutcomeProbability` per (attacker_kit, defender_kit, move). Lives on
+  the engine track, not priors. Score function then sums expected
+  counts instead of binary indicators (per design doc §M4.5).
+- **Smogon chaos JSON** — still not published for
+  `gen9championsvgc2026regma` as of 2026-04-27. `sources/smogon.ts`
+  follow-up once chaos has M-A data; first plausible drop is early
+  May 2026 for April data per
+  `dev/research/champions-2026-04-26.md`.
+- **`refine.ts`** — narrow KitCandidate[] / threshold cells given
+  observed facts. Deferred to M7 with per-opp notes.
+- **SP→stat conversion** — Champions uses Stat Points, not EVs. The
+  M4-simple representative spreads and the M4.5 stat distributions both
+  use EV-equivalent buckets; SP path is a sibling slice (M3.5/M4.0).
+  Threshold solver works on raw stat numbers, so it ports to SP cleanly
+  once the EV→SP boundary lands.
+- **`LEGAL_ABILITIES` table** — still scoped to the five M4 fixture
+  species. The M4.5 stat distributions add 6 species without expanding
+  the legality allow-list (the threshold solver doesn't go through
+  `pickLegalAbility`); when the engine track moves to `@pkmn/dex`
+  gen9champions data, both tables collapse to the same lookup.
+- **Distribution coverage expansion.** 11 species today; broaden to
+  the full M-A top-30 once Pikalytics indices stabilise post-Indianapolis
+  (Regionals 2026-05-29 will shift the meta).
+- **Threshold cache eviction.** No automatic GC; the 30-day TTL
+  prevents indefinite growth but doesn't prune unused entries. Add an
+  `evict-stale` CLI hook in M6.
 
 ## Known gaps
-- M-A spread data is unavailable from Pikalytics' AI endpoints (see
-  `dev/research/pikalytics-2026-04-27.md`). M4-simple uses hand-curated
-  representative spreads per item-bucket; M4.5 replaces this with the
-  threshold-probability model.
-- Smogon chaos JSON for `gen9championsvgc2026regma` not yet published.
-  Add `sources/smogon.ts` as a follow-up once chaos has M-A data.
-- `refine.ts` (narrow KitCandidate[] given observed facts) is deferred
-  to M7 (per-opp notes), not part of M4 or M4.5.
-- Champions uses Stat Points (SP), not EVs. The representative spreads
-  in `spreads.ts` are EV-equivalent placeholders, per design doc Open
-  Question 1. SP→stat conversion is a sibling slice (M3.5/M4.0).
+- **Hardcoded format ID stays scoped to `sources/pikalytics.ts`.**
+  Verified by the format-ID-not-hardcoded test in
+  `stat-distributions.test.ts`; new src files (`threshold.ts`,
+  `outcome.ts`, `stat-distributions.ts`) are clean.
+- **`priors → engine` runtime-import decision (M4.5).** The threshold
+  solver calls `@smogon/calc.calculate` directly rather than
+  `engine.calc()` — the wrapper is ~10 LOC and duplicating it keeps the
+  qc-structural §A2 "types-only" rule intact. If the duplication grows,
+  lift to a shared util and revisit. PR body documents the call.
+- Pikalytics' "Common Abilities" data is still contaminated for some
+  species; M4-simple's `pickLegalAbility` heuristic remains the workaround.
