@@ -23,8 +23,10 @@ import {
   type OppKitOption,
   type OppSlotPriors,
   Pokemon,
+  type RankedPicks,
   type ScoreWeights,
   getGeneration,
+  recommendBP,
   recommendBPFromSpecies,
 } from '../src/index.js';
 
@@ -58,6 +60,33 @@ function singleKitSlot(p: Pokemon): OppSlotPriors {
     weight: 1,
   };
   return { representative: p, kits: [kit] };
+}
+
+/** Extract structural fields from a RankedPicks for deep-equal comparison.
+ *  Avoids comparing `@smogon/calc` Pokemon class instances, which differ by
+ *  identity even when constructed identically. */
+function rankedSummary(r: RankedPicks): {
+  combo: readonly string[];
+  total: number;
+  breakdown: {
+    pickedKoOpp: number;
+    oppKoPicked: number;
+    pickedSurvivesOpp: number;
+    pickedOutspeedOpp: number;
+    unfilledRoles: number;
+  };
+}[] {
+  return r.picks.map((p) => ({
+    combo: p.combo.map((m) => m.name),
+    total: p.score.total,
+    breakdown: {
+      pickedKoOpp: p.score.breakdown.pickedKoOpp,
+      oppKoPicked: p.score.breakdown.oppKoPicked,
+      pickedSurvivesOpp: p.score.breakdown.pickedSurvivesOpp,
+      pickedOutspeedOpp: p.score.breakdown.pickedOutspeedOpp,
+      unfilledRoles: p.score.breakdown.unfilledRoles,
+    },
+  }));
 }
 
 describe('recommendBPFromSpecies — single-kit reduction', () => {
@@ -155,9 +184,22 @@ describe('recommendBPFromSpecies — single-kit reduction', () => {
     });
 
     const myTeam = [urshifu, rilla, tornadus, indeedee, garganacl, flutterMane] as const;
-    const ranked = recommendBPFromSpecies(gen, myTeam, oppSlots, WEIGHTS, { field: DOUBLES });
+    const oppTeam = [opp1, opp2, opp3, opp4, opp5, opp6] as const;
 
-    const top = ranked.picks[0]?.combo.map((p) => p.name) ?? [];
+    // Both entry points should produce bit-for-bit identical ranked picks
+    // when the closed-sheet path collapses to one weight-1 kit per opp slot.
+    // The score-layer score.test.ts guards prove the integration math
+    // reduces to integers under single-kit cells; this test pins the
+    // top-level recommendBPFromSpecies entry point to the same identity.
+    const fromSpecies = recommendBPFromSpecies(gen, myTeam, oppSlots, WEIGHTS, { field: DOUBLES });
+    const fromM3 = recommendBP(gen, myTeam, oppTeam, WEIGHTS, { field: DOUBLES });
+
+    expect(rankedSummary(fromSpecies)).toEqual(rankedSummary(fromM3));
+
+    // Sanity: the M3 path itself must still pick Urshifu first, mirroring
+    // bp.test.ts Scenario 3. Catches a class of bugs where both paths
+    // shifted in lockstep but to the wrong answer.
+    const top = fromM3.picks[0]?.combo.map((p) => p.name) ?? [];
     expect(top).toContain('Urshifu');
   });
 });

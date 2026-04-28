@@ -99,11 +99,11 @@ describe('threshold: solver agrees with linear-scan oracle', () => {
     expect(result.t2).toBeLessThanOrEqual(result.t1); // 2HKO threshold ≤ 1HKO threshold
   });
 
-  it('Choice Specs Tornadus Hurricane vs. Garchomp (special move → SpA axis)', () => {
+  it('Choice Specs Pelipper Hurricane vs. Garchomp (special move → SpA axis)', () => {
     const attacker = kit({
-      species: 'Tornadus',
+      species: 'Pelipper',
       item: 'Choice Specs',
-      ability: 'Prankster',
+      ability: 'Drizzle',
       moves: ['Hurricane'],
       nature: 'Modest',
       evs: { spa: 252 },

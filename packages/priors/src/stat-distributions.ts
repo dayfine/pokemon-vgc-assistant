@@ -17,9 +17,12 @@
  *   - 5 M4-simple fixture species (Incineroar, Whimsicott, Sneasler,
  *     Archaludon, Garchomp) — required so the threshold-probability layer
  *     overlaps the kit-expansion test set.
- *   - 6 additional top-usage M-A legal species (Rillaboom, Amoonguss,
- *     Dragonite, Tornadus, Tyranitar, Annihilape) — all are non-Restricted,
- *     non-Paradox, non-Treasure-of-Ruin per `dev/research/champions-2026-04-26.md`.
+ *   - 5 additional top-usage M-A legal species (Rillaboom, Amoonguss,
+ *     Dragonite, Tyranitar, Annihilape) — all are non-Restricted, non-Paradox,
+ *     non-Legendary, non-Treasure-of-Ruin per
+ *     `dev/research/champions-2026-04-26.md`. Tornadus was originally
+ *     included but removed: Forces of Nature are Legendary and M-A bans
+ *     all Legendaries.
  *
  * Adding a species: drop a new entry below, run the
  * `stat-distributions.test.ts` `it.each(speciesList)` weight-sum guard,
@@ -99,11 +102,6 @@ export const STAT_DISTRIBUTIONS: Readonly<Record<string, readonly StatBucketWeig
     { weight: 0.75, bucket: 'offensive-physical' },
     { weight: 0.15, bucket: 'bulky-physical' },
     { weight: 0.1, bucket: 'offensive-special' },
-  ],
-  Tornadus: [
-    // Prankster Tailwind utility splits the role with offensive Specs sets.
-    { weight: 0.7, bucket: 'speed-control' },
-    { weight: 0.3, bucket: 'offensive-special' },
   ],
   Tyranitar: [
     // Sand Stream support → AV bulky-special and offensive-physical Choice
