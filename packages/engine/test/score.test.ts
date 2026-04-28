@@ -10,7 +10,7 @@ import {
 } from '../src/index.js';
 import type { MatchupMatrix } from '../src/matrix.js';
 import type { SpeedRanking } from '../src/speed.js';
-import type { Matchup, Move, Pokemon, TeamSet } from '../src/types.js';
+import type { KitCell, Matchup, Move, Pokemon, TeamSet } from '../src/types.js';
 
 const gen = getGeneration();
 
@@ -95,6 +95,29 @@ function stubMatchup(
   };
 }
 
+/**
+ * Wrap a 3D `Matchup[][][]` (the M3 shape) into the M3.5 `KitCell[][][]`
+ * shape with a single weight-1 cell per (a, d). Each `Matchup` already
+ * carries (or doesn't) an `outcome` payload; `score`'s fallback derives
+ * a binary indicator from `damage.koChance`/`notation` when absent, which
+ * is the behaviour these guard tests pin.
+ */
+function wrapAsKitCells(
+  cells: ReadonlyArray<ReadonlyArray<readonly Matchup[]>>,
+): ReadonlyArray<ReadonlyArray<readonly KitCell[]>> {
+  return cells.map((row) =>
+    row.map((matchups) => [
+      {
+        weight: 1,
+        // Stub kit descriptor — score never reads its fields, only uses
+        // them via the matchup payload. Keep the shape minimal.
+        kit: { species: '', item: '', ability: '', moves: [] },
+        matchups,
+      },
+    ]),
+  );
+}
+
 function stubMatrix(
   myTeam: TeamSet,
   oppTeam: TeamSet,
@@ -102,8 +125,8 @@ function stubMatrix(
   oppCells: ReadonlyArray<ReadonlyArray<readonly Matchup[]>>,
 ): MatchupMatrix {
   return {
-    my: { attackers: myTeam, defenders: oppTeam, cells: myCells },
-    opp: { attackers: oppTeam, defenders: myTeam, cells: oppCells },
+    my: { attackers: myTeam, defenders: oppTeam, cells: wrapAsKitCells(myCells) },
+    opp: { attackers: oppTeam, defenders: myTeam, cells: wrapAsKitCells(oppCells) },
   };
 }
 

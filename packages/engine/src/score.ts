@@ -1,6 +1,6 @@
 import type { MatchupMatrix, MatrixSide } from './matrix.js';
 import type { SpeedRanking } from './speed.js';
-import type { Matchup, Pokemon, Side, TeamSet } from './types.js';
+import type { KitCell, Matchup, Pokemon, Side, TeamSet } from './types.js';
 
 /**
  * Weights applied by `score`. Engine owns the *type*; the *values* live in
@@ -17,6 +17,13 @@ import type { Matchup, Pokemon, Side, TeamSet } from './types.js';
  *         - roleGap         * unfilledRoles
  *
  * Sign is encoded in the formula above; weights are non-negative.
+ *
+ * As of the M3.5 matrix-payload swap, `pickedKoOpp`, `oppKoPicked`, and
+ * `pickedSurvivesOpp` are *expected counts* — sums of `weight × P(...)`
+ * across opp-kit candidates. Real-valued in [0, n_opp]. The breakdown
+ * fields stay typed `number`; M3's integer behaviour is recovered when
+ * the matrix has a single weight-1 KitCell per (a, d) pair (the
+ * concrete-kit input path).
  */
 export interface ScoreWeights {
   /** Per-opp-mon credit for having a guaranteed-OHKO answer in the bring. */
@@ -80,18 +87,32 @@ function hasSpeedControlMove(p: Pokemon): boolean {
 }
 
 /**
+ * Iterate every `Matchup` in a (a, d) cell across all kit candidates.
+ * Roles look at *what move categories the attacker can throw*, which is
+ * a property of the attacker's kit; we union across all kits because
+ * "can the bring's attacker hit physically under *some* plausible kit"
+ * is the conservative read of role coverage. (For my-side attacker,
+ * attacker's kit is concrete and there is exactly one kit cell.)
+ */
+function* allMatchupsInCell(cell: readonly KitCell[]): Generator<Matchup> {
+  for (const kc of cell) {
+    for (const m of kc.matchups) yield m;
+  }
+}
+
+/**
  * Per-mon role classification. A mon may fill multiple roles (e.g. a
  * mixed attacker also bringing Tailwind). The role-gap term cares only
  * about *coverage* of the bring as a set, so we union the per-mon roles.
  */
-function rolesFor(mon: Pokemon, attackerCells: readonly (readonly Matchup[])[]): ReadonlySet<Role> {
+function rolesFor(mon: Pokemon, attackerCells: readonly (readonly KitCell[])[]): ReadonlySet<Role> {
   const roles = new Set<Role>();
   if (hasSpeedControlMove(mon)) roles.add('speedControl');
   // Look at every move on this attacker against any defender. If any
   // physical move shows up in the matchup grid, the mon is a physical
   // attacker by virtue of carrying one. Same for special.
   for (const cell of attackerCells) {
-    for (const m of cell) {
+    for (const m of allMatchupsInCell(cell)) {
       if (isPhysicalAttackingMove(m)) roles.add('physicalAttacker');
       if (isSpecialAttackingMove(m)) roles.add('specialAttacker');
     }
@@ -115,98 +136,180 @@ function roleGapCount(combo: TeamSet, mySide: MatrixSide): number {
 }
 
 /**
- * Does *any* move on attacker `attackerIdx` against defender `defenderIdx`
- * register a guaranteed OHKO? `koChance: 1` plus a `notation` containing
- * "OHKO" is the calc layer's signal — we use both to avoid mis-classifying
- * 2HKO/3HKO ranges that happen to roll `koChance: 1` for the multi-hit.
+ * P(this matchup OHKOs the defender). When the `Matchup` carries an
+ * `outcome` payload (matrix attached one — either via injected
+ * `outcomeProbability` or the deterministic fallback), use that. Else
+ * fall back to the M3 binary indicator `koChance: 1 && OHKO`.
+ *
+ * The deterministic fallback exists so synthetic-matrix tests in
+ * `score.test.ts` (which build `Matchup` objects without the new shape)
+ * keep passing.
  */
-function hasGuaranteedOhko(side: MatrixSide, attackerIdx: number, defenderIdx: number): boolean {
-  const cell = side.cells[attackerIdx]?.[defenderIdx];
-  if (!cell) return false;
-  for (const m of cell) {
-    if (m.damage.koChance === 1 && m.damage.notation.includes('OHKO')) return true;
-  }
-  return false;
+function pOhkoOf(m: Matchup): number {
+  if (m.outcome !== undefined) return m.outcome.pOhko;
+  return m.damage.koChance === 1 && m.damage.notation.includes('OHKO') ? 1 : 0;
 }
 
 /**
- * Survives every move the attacker can throw. A "defensive answer" in v1
- * means: even the attacker's best move never guarantees an OHKO. This is
- * symmetric with `hasGuaranteedOhko` from the other side.
+ * Across one (a, d) cell, the probability that *some move* on this kit
+ * yields an OHKO. `max` over moves is the right aggregator: we only need
+ * one move to land. The kit cell's `weight` is applied by the caller.
  */
-function survivesAllMoves(side: MatrixSide, attackerIdx: number, defenderIdx: number): boolean {
-  const cell = side.cells[attackerIdx]?.[defenderIdx];
-  if (!cell) return true; // no moves recorded → nothing can KO
-  for (const m of cell) {
-    if (m.damage.koChance === 1 && m.damage.notation.includes('OHKO')) return false;
+function maxPOhkoInKitCell(kc: KitCell): number {
+  let best = 0;
+  for (const m of kc.matchups) {
+    const p = pOhkoOf(m);
+    if (p > best) best = p;
   }
-  return true;
+  return best;
 }
 
 /**
- * The number of opp mons for which the bring contains a guaranteed-OHKO
- * answer. Each opp mon counts at most once — having two answers to the
- * same threat doesn't double-count.
+ * Across one (a, d) cell, the probability that *no move* OHKOs. Mirror
+ * of `maxPOhkoInKitCell` for the "survives" question.
+ */
+function pSurvivesAllInKitCell(kc: KitCell): number {
+  // P(survive) = 1 - max P(OHKO via any move). Same independence assumption
+  // as the offense direction: we treat the move axis as "best move wins"
+  // rather than as joint probabilities across moves.
+  return 1 - maxPOhkoInKitCell(kc);
+}
+
+/**
+ * Expected number of opp slots the bring contains a guaranteed-OHKO answer
+ * for. Per opp slot d:
+ *
+ *   E[answer to slot d] = Σ kit_cell.weight × indicator(some pick OHKOs this kit)
+ *
+ * "indicator(some pick OHKOs this kit)" is `max over picks of pOhko`. With
+ * concrete-kit input (single weight-1 KitCell, binary pOhko ∈ {0,1}),
+ * this reduces to the M3 integer count — every assertion in the M3
+ * scenario tests still passes.
  */
 function pickedKoOpp(combo: TeamSet, mySide: MatrixSide): number {
-  let count = 0;
+  let total = 0;
   for (let d = 0; d < mySide.defenders.length; d++) {
-    let answered = false;
-    for (const mon of combo) {
-      const idx = mySide.attackers.indexOf(mon);
-      if (idx < 0) continue;
-      if (hasGuaranteedOhko(mySide, idx, d)) {
-        answered = true;
-        break;
+    // For each (pick, opp_kit) pair we get a P(pick OHKOs this kit). Across
+    // picks, we want max (any pick suffices). Across kits, weighted sum.
+    // Compute "for this opp slot d, what's the expected indicator that the
+    // bring answers it".
+    // We have to fold the "pick over multiple picks" inside the kit-cell
+    // axis, since different picks may dominate under different kits.
+    // Concretely: per-kit max over picks; then weighted sum across kits.
+    // But the my-side cell's KitCell axis varies by *opp defender kit*, so
+    // we align by kit-cell index across picks (which all share the same
+    // opp defender at slot d).
+    const numKits = mySide.cells[0]?.[d]?.length ?? 0;
+    if (numKits === 0) continue;
+    // Per kit index k, find the max pOhko over picks. The cell is
+    // mySide.cells[a][d][k] for each pick attacker index a.
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (let k = 0; k < numKits; k++) {
+      let bestP = 0;
+      let kitWeight = 0;
+      for (const mon of combo) {
+        const a = mySide.attackers.indexOf(mon);
+        if (a < 0) continue;
+        const kc = mySide.cells[a]?.[d]?.[k];
+        if (!kc) continue;
+        // Kit weight is determined by opp-kit identity, so any pick's view
+        // of kit k yields the same weight; capture it once.
+        if (kitWeight === 0) kitWeight = kc.weight;
+        const p = maxPOhkoInKitCell(kc);
+        if (p > bestP) bestP = p;
       }
+      weightedSum += kitWeight * bestP;
+      weightSum += kitWeight;
     }
-    if (answered) count += 1;
+    // Guard against the (theoretical) case where weightSum drifts slightly
+    // off 1.0 due to floating-point — normalise to keep the per-slot
+    // expected count in [0, 1]. When all kit weights sum to exactly 1.0
+    // (the design-doc invariant), this is a no-op.
+    if (weightSum > 0 && Math.abs(weightSum - 1) < 1e-6) {
+      total += weightedSum;
+    } else if (weightSum > 0) {
+      total += weightedSum / weightSum;
+    }
   }
-  return count;
+  return total;
 }
 
 /**
- * The number of picked mons that some opp mon guarantees an OHKO on. Each
- * picked mon counts at most once; if two opp threats both 1HKO the same
- * pick, that's still one penalty point.
+ * Expected number of picked mons that *some* opp mon (under any plausible
+ * attacker kit) guarantees an OHKO on. For each picked mon d, weighted-sum
+ * across opp attacker kits of (max over opp slots of P(this opp OHKOs the
+ * pick under this kit)).
  */
 function oppKoPicked(combo: TeamSet, oppSide: MatrixSide): number {
-  let count = 0;
+  let total = 0;
   for (const mon of combo) {
     const dIdx = oppSide.defenders.indexOf(mon);
     if (dIdx < 0) continue;
-    let killed = false;
+    // For each opp attacker slot a, we have a KitCell[] indexing opp
+    // attacker kit k. The probability slot `a` OHKOs the pick under kit
+    // k is `maxPOhkoInKitCell(oppSide.cells[a][dIdx][k])`. Across kits at
+    // slot a, weighted sum gives P(slot a OHKOs the pick). We want the
+    // probability that *any* opp slot OHKOs the pick — but slots are not
+    // mutually exclusive (multiple slots can independently OHKO). Use
+    // `max across slots` as the conservative-and-bounded estimator: the
+    // pick is "answered KO'd" if *some* slot OHKOs it. Sums and marginal
+    // independence aren't justified at this layer; max keeps the metric
+    // in [0, 1] per pick.
+    let bestSlotP = 0;
     for (let a = 0; a < oppSide.attackers.length; a++) {
-      if (hasGuaranteedOhko(oppSide, a, dIdx)) {
-        killed = true;
-        break;
+      const cell = oppSide.cells[a]?.[dIdx];
+      if (!cell || cell.length === 0) continue;
+      let slotP = 0;
+      let weightSum = 0;
+      for (const kc of cell) {
+        slotP += kc.weight * maxPOhkoInKitCell(kc);
+        weightSum += kc.weight;
       }
+      const normSlotP = weightSum > 0 ? slotP / Math.max(weightSum, 1) : 0;
+      if (normSlotP > bestSlotP) bestSlotP = normSlotP;
     }
-    if (killed) count += 1;
+    total += bestSlotP;
   }
-  return count;
+  return total;
 }
 
 /**
- * The number of opp mons that *some* picked mon survives every attack
- * from. An opp threat with no defensive answer in the bring contributes
- * 0; a threat that even one pick walls contributes 1.
+ * Expected number of opp slots that *some* pick walls (= survives every
+ * move the opp's most plausible kit threatens). Mirror of `pickedKoOpp`,
+ * just on the survival axis.
  */
 function pickedSurvivesOpp(combo: TeamSet, oppSide: MatrixSide): number {
-  let count = 0;
+  let total = 0;
   for (let a = 0; a < oppSide.attackers.length; a++) {
-    let walled = false;
-    for (const mon of combo) {
-      const dIdx = oppSide.defenders.indexOf(mon);
-      if (dIdx < 0) continue;
-      if (survivesAllMoves(oppSide, a, dIdx)) {
-        walled = true;
-        break;
+    // For each opp attacker slot a, compute P(some pick walls slot a),
+    // weighted across opp kit candidates at slot a.
+    const numKits = oppSide.cells[a]?.[0]?.length ?? 0;
+    if (numKits === 0) continue;
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (let k = 0; k < numKits; k++) {
+      let bestSurv = 0;
+      let kitWeight = 0;
+      for (const mon of combo) {
+        const dIdx = oppSide.defenders.indexOf(mon);
+        if (dIdx < 0) continue;
+        const kc = oppSide.cells[a]?.[dIdx]?.[k];
+        if (!kc) continue;
+        if (kitWeight === 0) kitWeight = kc.weight;
+        const p = pSurvivesAllInKitCell(kc);
+        if (p > bestSurv) bestSurv = p;
       }
+      weightedSum += kitWeight * bestSurv;
+      weightSum += kitWeight;
     }
-    if (walled) count += 1;
+    if (weightSum > 0 && Math.abs(weightSum - 1) < 1e-6) {
+      total += weightedSum;
+    } else if (weightSum > 0) {
+      total += weightedSum / weightSum;
+    }
   }
-  return count;
+  return total;
 }
 
 /**

@@ -3,12 +3,10 @@
 ## Last updated: 2026-04-27
 
 ## Status
-MERGED
+READY_FOR_REVIEW
 
 ## Current milestone
-None — engine track is feature-complete for v1 through M3. Next
-milestones (M4 priors, M5 vision) are owned by separate tracks. Re-open
-this track only for M3 follow-ups (see below) or v2 work.
+M3.5 — matrix kit-cells / outcomeProbability integration
 
 ## Completed
 - M1: engine skeleton + calc wrapper + 5 pinned Gen 9 calcs (PR #2, merged)
@@ -22,7 +20,29 @@ this track only for M3 follow-ups (see below) or v2 work.
   scenarios + four guard-semantics unit tests. (PR #8, merged.)
 
 ## In Progress
-(none)
+- M3.5 (this PR) — matrix-payload swap to KitCells + OutcomeProbability.
+  - Matrix `cells[a][d]` becomes `readonly KitCell[]` on **both** sides
+    (each KitCell = `{ weight, kit, matchups }`); each `Matchup` carries
+    an optional `OutcomeProbability` (`{ pOhko, pTwoHko }`). The kit-cell
+    axis enumerates *opp* kit candidates regardless of side: my-side
+    varies opp's defender kit, opp-side varies opp's attacker kit.
+  - `score`'s `pickedKoOpp` / `oppKoPicked` / `pickedSurvivesOpp` become
+    real-valued expected counts under weighted aggregation across kit
+    cells. Fall back to a deterministic binary indicator when a `Matchup`
+    has no `outcome` payload — keeps M3 ordering tests stable.
+  - New entry point `recommendBPFromSpecies(gen, myTeam, oppSlots,
+    weights, options)` for closed-sheet input. Existing `recommendBP`
+    still accepts concrete `TeamSet` opps and reduces to the same
+    KitCell shape with weight 1.0 per slot (M3 backwards-compat path).
+  - Dep direction: engine takes an injected
+    `outcomeProbability: (input) => OutcomeProbability` function param
+    rather than runtime-importing `@pva/priors`. Caller (CLI / web)
+    passes `priors.outcomeProbability` through. Verified zero imports
+    of `@pva/priors` under `packages/engine/`.
+  - 22 engine tests pass (was 20); 2 new tests for the closed-sheet
+    path (`bp-species.test.ts`): single-kit reduction matches M3, and
+    a multi-kit aggregation produces non-integer breakdown counts that
+    prove the kit-cell aggregation is firing.
 
 ## Blocking refactors
 (none)
@@ -31,21 +51,26 @@ this track only for M3 follow-ups (see below) or v2 work.
 - Wire `gen9champions` mod data into `engine/src/data.ts:getGeneration()`
   once plan open Q1/Q2/Q3 are resolved (M1.5 — separate slice).
 - Add a Node REPL example to README showing `engine.calc(...)` /
-  `engine.matrix(...)` / `engine.recommendBP(...)` to make the
-  M1/M2/M3 "done when" criteria runnable from a copy-paste.
+  `engine.matrix(...)` / `engine.recommendBP(...)` /
+  `engine.recommendBPFromSpecies(...)` to make the M1/M2/M3/M3.5
+  "done when" criteria runnable from a copy-paste.
 - Speed-tie handling: `speedTiers` is a stable sort; it does *not* model
   the 50/50 coin flip. M3's `score.pickedOutspeedOpp` counts only
   strictly-faster mons — equal-effective-speed ties are not flagged in
   the score breakdown. Surface ties to the report layer (M6) so
   rationale text can call them out.
-- Matrix's "all relevant moves" = every non-status move on
-  `pokemon.moves`. M4 (priors) iterates over kit candidates per opp mon
-  and aggregates; matrix cell payload may shift from `Matchup[]` to
-  `KitCell[] = { weight, matchups }[]` per
-  `dev/plans/03-priors-design.md`. Additive.
+- Multi-kit `pickedOutspeedOpp`: currently uses the opp slot's
+  *representative* speed only; the kit-cell aggregator ignores per-kit
+  speed variation (Choice Scarf vs. no Scarf shifts the speed tier).
+  Lift to a kit-aware speed term when `recommendBPFromSpecies` callers
+  pass kits with item-driven speed deltas.
 - `pva.config.ts` ships with `scoreWeights` only in M3; the other
   tunables (`format`, `sheetMode`, `priorsCacheTtl`, `claudeModel`) are
   scaffolded as TODO-typed and left to their respective milestones.
+- `oppKoPicked` aggregates across opp slots with `max-across-slots` to
+  bound the per-pick metric in [0, 1] without assuming slot
+  independence. M4.5+ may revisit if hand-graded scenarios show
+  pessimistic ranking under coordinated multi-OHKO threats.
 
 ## Known gaps
 - No SP→stat conversion yet; calc currently uses vanilla Gen 9 EV math.
@@ -60,6 +85,8 @@ this track only for M3 follow-ups (see below) or v2 work.
   with Booster Energy, Protosynthesis). Add when those abilities show
   up in real M-A scoring scenarios; matrix already passes field state
   to `@smogon/calc` for damage purposes.
-- M3 scoring uses a single concrete opp kit per mon. Set-priors
-  integration (weighting score across candidate kits per opp mon)
-  lands in M4.
+- M3.5 aggregation makes the simplifying assumption that opp kit
+  candidates are independent across slots (Σ across opp slots is an
+  expected count; we don't model joint scenarios like "if opp kit at
+  slot 0 is Specs, slot 3 is more likely Sash"). Documented in
+  `dev/plans/03-priors-design.md` and accepted as v1.
