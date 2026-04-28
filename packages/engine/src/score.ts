@@ -313,49 +313,77 @@ function pickedSurvivesOpp(combo: TeamSet, oppSide: MatrixSide): number {
 }
 
 /**
- * The number of opp mons the bring outspeeds at base field state. We use
- * the speed ranking the caller passed in (Trick Room / Tailwind / scarves
- * baked into `effective` already). For each opp mon, count it if *some*
- * pick has higher effective speed.
+ * Expected number of opp slots the bring outspeeds, weighted by per-kit
+ * speed deltas. For each opp slot d:
+ *
+ *   E[outspeeds slot d] = Σ_{k} kit_cell.weight × indicator(some pick beats kit_cell.effectiveSpeed)
+ *
+ * "indicator" flips under Trick Room (slower-first wins). My picks'
+ * effective speeds come from the global `SpeedRanking` (built by the
+ * caller under the same `sideSpeedModifiers` the matrix uses), filtered
+ * to the bring's members.
+ *
+ * The pre-M3.5 behaviour used one effective speed per opp slot (the
+ * slot's representative `Pokemon`). Multi-kit slots that contained
+ * Choice Scarf branches lost that delta. Reading `kit_cell.effectiveSpeed`
+ * — which the matrix layer pre-computes per kit via
+ * `speed.ts.effectiveSpeed(kit.pokemon, {}, sideMods.opp)` — closes the
+ * gap. Concrete-kit input (single weight-1 KitCell whose
+ * `effectiveSpeed` matches the global ranking) keeps M3 ordering tests
+ * bit-for-bit stable.
+ *
+ * **Item Clause not modeled.** Pokémon's competitive Item Clause forbids
+ * two mons on a brought team from sharing an item, so the joint
+ * distribution of opp kits has cross-slot dependence (e.g.
+ * `P(slot0 = Scarf ∧ slot1 = Scarf) = 0` rather than the product of
+ * marginals). `pickedOutspeedOpp` is a sum of *marginal* expectations
+ * per opp slot, however — Item Clause doesn't change marginals; only
+ * joint events would be affected, and the score function never queries
+ * those. Accepted v1 simplification; revisit if joint-event speed
+ * analysis lands (M7+).
  */
 function pickedOutspeedOpp(
   combo: TeamSet,
-  oppMons: TeamSet,
+  matchup: MatchupMatrix,
   speed: SpeedRanking,
   side: Side,
 ): number {
-  // Find the smallest "rank" (= position in `speed.entries`) any pick has.
-  const myRanks = new Set<number>();
-  for (let i = 0; i < speed.entries.length; i++) {
-    const e = speed.entries[i];
-    if (!e) continue;
-    if (e.side === side && combo.includes(e.pokemon)) myRanks.add(i);
+  // My picks' effective speeds, pulled from the global ranking. The
+  // caller built `speed` under the same `sideSpeedModifiers` the matrix
+  // used for KitCell.effectiveSpeed, so the two sides of the comparison
+  // are calibrated.
+  const myPickSpeeds: number[] = [];
+  for (const e of speed.entries) {
+    if (e.side === side && combo.includes(e.pokemon)) myPickSpeeds.push(e.effective);
   }
-  if (myRanks.size === 0) return 0;
-  let count = 0;
-  for (const opp of oppMons) {
-    let oppRank = -1;
-    for (let i = 0; i < speed.entries.length; i++) {
-      const e = speed.entries[i];
-      if (!e) continue;
-      if (e.pokemon === opp && e.side !== side) {
-        oppRank = i;
-        break;
-      }
+  if (myPickSpeeds.length === 0) return 0;
+
+  const trickRoom = speed.trickRoom;
+  // Under Trick Room, "beats" inverts: lower effective speed acts first.
+  const myBest = trickRoom ? Math.min(...myPickSpeeds) : Math.max(...myPickSpeeds);
+
+  let total = 0;
+  const mySide = matchup.my;
+  for (let d = 0; d < mySide.defenders.length; d++) {
+    // Kit cells for opp slot d are identical across my-attacker rows
+    // (the kit dimension is opp-side; my attacker is concrete). Read
+    // from row 0; if the side is empty, skip.
+    const kitCells = mySide.cells[0]?.[d];
+    if (!kitCells || kitCells.length === 0) continue;
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (const kc of kitCells) {
+      const beats = trickRoom ? myBest < kc.effectiveSpeed : myBest > kc.effectiveSpeed;
+      weightedSum += kc.weight * (beats ? 1 : 0);
+      weightSum += kc.weight;
     }
-    if (oppRank < 0) continue;
-    // Outspeeds = appears earlier in the entries array (lower index =
-    // moves first). Counts if *any* pick is faster than this opp mon.
-    let beaten = false;
-    for (const r of myRanks) {
-      if (r < oppRank) {
-        beaten = true;
-        break;
-      }
+    if (weightSum > 0 && Math.abs(weightSum - 1) < 1e-6) {
+      total += weightedSum;
+    } else if (weightSum > 0) {
+      total += weightedSum / weightSum;
     }
-    if (beaten) count += 1;
   }
-  return count;
+  return total;
 }
 
 export interface ScoreBreakdown {
@@ -379,6 +407,14 @@ export interface Score {
  *
  * Pure: identical inputs give identical outputs. `weights` is a parameter
  * — engine never reads `pva.config.ts`.
+ *
+ * `oppTeam` is retained in the signature for back-compat with M3 callers
+ * (and as a documentation hook for the matrix's opp-side keying). The
+ * speed term now reads per-kit `effectiveSpeed` from the matrix instead
+ * of re-deriving from `oppTeam` directly, so the parameter is currently
+ * unused inside the body. It is intentionally NOT removed: doing so
+ * would be a public-API break for an engine release that's already
+ * shipped to downstream tracks (priors, vision, cli).
  */
 export function score(
   combo: TeamSet,
@@ -391,7 +427,7 @@ export function score(
     pickedKoOpp: pickedKoOpp(combo, matchup.my),
     oppKoPicked: oppKoPicked(combo, matchup.opp),
     pickedSurvivesOpp: pickedSurvivesOpp(combo, matchup.opp),
-    pickedOutspeedOpp: pickedOutspeedOpp(combo, oppTeam, speed, 'my'),
+    pickedOutspeedOpp: pickedOutspeedOpp(combo, matchup, speed, 'my'),
     unfilledRoles: roleGapCount(combo, matchup.my),
   };
   const total =

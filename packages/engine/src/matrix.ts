@@ -1,6 +1,8 @@
 import { Move } from '@smogon/calc';
 import type { Generation } from '@smogon/calc/dist/data/interface';
 import { calc } from './calc.js';
+import { effectiveSpeed } from './speed.js';
+import type { SideSpeedModifiers } from './speed.js';
 import type {
   Field,
   KitCell,
@@ -8,6 +10,7 @@ import type {
   Matchup,
   OutcomeProbability,
   Pokemon,
+  Side,
   TeamSet,
 } from './types.js';
 
@@ -102,6 +105,15 @@ export interface MatrixOptions {
    * matches M3 semantics for concrete-kit input.
    */
   readonly outcomeProbability?: OutcomeProbabilityFn;
+  /**
+   * Per-side speed modifiers (Tailwind, Trick Room) used when populating
+   * each `KitCell.effectiveSpeed`. The matrix bakes the opp-side
+   * modifiers into the kit's pre-computed speed so `score.pickedOutspeedOpp`
+   * can weight by kit cell. Mirrors the `sideSpeedModifiers` field on
+   * `RecommendBpOptions`; the higher-level `recommendBP` entry point
+   * forwards it through. When omitted, no side mods apply (vanilla speeds).
+   */
+  readonly sideSpeedModifiers?: { [K in Side]?: SideSpeedModifiers };
 }
 
 function shouldCalc(move: Move): boolean {
@@ -177,6 +189,11 @@ function matchupsForKit(
  * opp sits on the *defender* axis (i.e. the my side); `oppAttackerOptions`
  * does the same for the opp side. Exactly one of them is populated per
  * call — the function knows which axis is uncertain from `uncertainSide`.
+ *
+ * `oppSideMods` is the side-modifier bundle that applies to the opp side
+ * of the field — the kit-bearing side. We bake it into each KitCell's
+ * `effectiveSpeed` so the score layer doesn't have to re-derive per-kit
+ * speed deltas (Choice Scarf, +1 boost, etc.).
  */
 function cellsFor(
   gen: Generation,
@@ -186,6 +203,7 @@ function cellsFor(
   uncertainSide: 'attacker' | 'defender',
   oppOptionsByIdx: ReadonlyArray<readonly OppKitOption[]>,
   outcomeProbability: OutcomeProbabilityFn | undefined,
+  oppSideMods: SideSpeedModifiers,
 ): ReadonlyArray<ReadonlyArray<readonly KitCell[]>> {
   return attackers.map((attacker, ai) =>
     defenders.map((defender, di) => {
@@ -215,6 +233,10 @@ function cellsFor(
               uncertainSide,
               outcomeProbability,
             ),
+            // The opp-side Pokémon is the concrete one on the M3 path —
+            // single weight-1 cell, speed equals the global ranking's
+            // opp-side speed for this slot. Bit-for-bit compatible.
+            effectiveSpeed: effectiveSpeed(concreteSidePokemon, {}, oppSideMods),
           },
         ];
       }
@@ -238,6 +260,10 @@ function cellsFor(
             uncertainSide,
             outcomeProbability,
           ),
+          // Per-kit speed: each candidate's `Pokemon` already encodes its
+          // item (Choice Scarf flips here automatically) and spread, so the
+          // helper handles the kit dimension naturally.
+          effectiveSpeed: effectiveSpeed(opt.pokemon, {}, oppSideMods),
         };
       });
     }),
@@ -262,7 +288,7 @@ export function matrix(
   oppTeam: TeamSet,
   options: MatrixOptions = {},
 ): MatchupMatrix {
-  const { field, oppKits, outcomeProbability } = options;
+  const { field, oppKits, outcomeProbability, sideSpeedModifiers } = options;
   if (oppKits !== undefined && oppKits.length !== oppTeam.length) {
     throw new Error(
       `matrix: options.oppKits.length (${oppKits.length}) must match oppTeam.length (${oppTeam.length})`,
@@ -273,6 +299,11 @@ export function matrix(
   // my mons → the opp is the attacker, so opp-kit options index attackers.
   const oppAsDefenderOptions = oppKits ?? [];
   const oppAsAttackerOptions = oppKits ?? [];
+  // Both directions' KitCells live on the *opp* side — that's the only
+  // side with kit ambiguity under closed-sheet input. We bake `sideMods.opp`
+  // into every cell's `effectiveSpeed`, regardless of which direction the
+  // matrix builder is running.
+  const oppSideMods = sideSpeedModifiers?.opp ?? {};
   return {
     my: {
       attackers: myTeam,
@@ -285,6 +316,7 @@ export function matrix(
         'defender',
         oppAsDefenderOptions,
         outcomeProbability,
+        oppSideMods,
       ),
     },
     opp: {
@@ -298,6 +330,7 @@ export function matrix(
         'attacker',
         oppAsAttackerOptions,
         outcomeProbability,
+        oppSideMods,
       ),
     },
   };

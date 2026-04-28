@@ -325,3 +325,314 @@ describe('recommendBPFromSpecies — multi-kit aggregation', () => {
     expect(b.oppKoPicked).toBeLessThanOrEqual(4);
   });
 });
+
+describe('recommendBPFromSpecies — kit-aware speed (Choice Scarf branch)', () => {
+  it('weights pickedOutspeedOpp by per-kit effective speed across Scarf vs. no-Scarf branches', () => {
+    // Single opp slot: Volcarona at 50/50 Timid/no-item vs Timid Choice
+    // Scarf. The two kits share base stats and nature (so all that
+    // changes is the +50% Scarf multiplier on Speed). My team's four
+    // picks all have effective speed in the *interval* between
+    // no-Scarf Volcarona (167) and Scarf Volcarona (250):
+    //
+    //   Volcarona no-Scarf (Timid, 252 spe) @ L50 = 167
+    //   Volcarona Scarf (Timid, 252 spe) @ L50  = floor(167 * 1.5) = 250
+    //
+    //   Iron Valiant (Naive, 252 spe) = 188
+    //   Tornadus (Timid, 252 spe)     = 178
+    //   Flutter Mane (Timid, 252 spe) = 205
+    //   Roaring Moon (Jolly, 252 spe) = 196
+    //
+    // All four picks outspeed the no-Scarf branch. None outspeed the
+    // Scarf branch. Expected pickedOutspeedOpp ≈ 0.5 (the Scarf-branch
+    // weight) — half-credit precisely captures the per-kit speed delta
+    // the M3.5 single-rank-per-slot path was losing.
+    const volcNoItem = new Pokemon(gen, 'Volcarona', {
+      level: 50,
+      ability: 'Flame Body',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Heat Wave', 'Bug Buzz'],
+    });
+    const volcScarf = new Pokemon(gen, 'Volcarona', {
+      level: 50,
+      item: 'Choice Scarf',
+      ability: 'Flame Body',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Heat Wave', 'Bug Buzz'],
+    });
+    const volcSlot: OppSlotPriors = {
+      // Representative: pick the no-Scarf Volcarona arbitrarily — it's
+      // not the one driving the speed term anyway, since this test
+      // verifies the kit-cell axis (not the legacy representative path).
+      representative: volcNoItem,
+      kits: [
+        {
+          pokemon: volcNoItem,
+          kit: {
+            species: 'Volcarona',
+            item: '',
+            ability: 'Flame Body',
+            moves: ['Heat Wave', 'Bug Buzz'],
+          },
+          weight: 0.5,
+        },
+        {
+          pokemon: volcScarf,
+          kit: {
+            species: 'Volcarona',
+            item: 'Choice Scarf',
+            ability: 'Flame Body',
+            moves: ['Heat Wave', 'Bug Buzz'],
+          },
+          weight: 0.5,
+        },
+      ],
+    };
+
+    const ironValiant = new Pokemon(gen, 'Iron Valiant', {
+      level: 50,
+      ability: 'Quark Drive',
+      nature: 'Naive',
+      evs: { atk: 4, spa: 252, spe: 252 },
+      moves: ['Moonblast', 'Close Combat'],
+    });
+    const tornadus = new Pokemon(gen, 'Tornadus', {
+      level: 50,
+      ability: 'Prankster',
+      nature: 'Timid',
+      evs: { hp: 4, spa: 252, spe: 252 },
+      moves: ['Bleakwind Storm', 'Air Slash'],
+    });
+    const flutter = new Pokemon(gen, 'Flutter Mane', {
+      level: 50,
+      ability: 'Protosynthesis',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Moonblast', 'Shadow Ball'],
+    });
+    const roaringMoon = new Pokemon(gen, 'Roaring Moon', {
+      level: 50,
+      ability: 'Protosynthesis',
+      nature: 'Jolly',
+      evs: { atk: 252, spe: 252 },
+      moves: ['Knock Off', 'Iron Head'],
+    });
+
+    const myTeam = [ironValiant, tornadus, flutter, roaringMoon] as const;
+
+    const ranked = recommendBPFromSpecies(gen, myTeam, [volcSlot], WEIGHTS, {
+      field: DOUBLES,
+      topK: 1,
+    });
+
+    const top = ranked.picks[0];
+    expect(top).toBeDefined();
+    if (!top) return;
+
+    // The kit-aware aggregation pins this at exactly 0.5 (50% weight on
+    // the Scarf branch where no pick wins, 50% on the no-Scarf branch
+    // where all picks win). Pre-fix, the score read one effective speed
+    // per opp slot — the slot's `representative` Pokémon — which would
+    // collapse to either 1.0 (representative is no-Scarf, all win) or
+    // 0.0 (representative is Scarf, none win). Either integer would
+    // mean the kit-cell speed axis isn't firing.
+    expect(top.score.breakdown.pickedOutspeedOpp).toBeCloseTo(0.5, 6);
+  });
+
+  it('flips the speed comparison under Trick Room — slower picks beat faster kits', () => {
+    // Trick Room inverts the "outspeed" sense: lower effective speed
+    // wins. Same Volcarona Scarf-vs-no-Scarf opp slot, but my team is
+    // *slower* than both kit branches (a TR-tuned crew). Under TR:
+    //
+    //   no-Scarf Volc (167 eff) — my picks (all < 167) "beat" it (TR)
+    //   Scarf Volc (250 eff)    — my picks (all < 250) "beat" it (TR)
+    //
+    // Both branches favour my picks under TR → pickedOutspeedOpp = 1.0
+    // (full credit), regardless of the per-kit speed delta. This pins
+    // the trickRoom flip in `pickedOutspeedOpp` after the kit-aware
+    // refactor.
+    const volcNoItem = new Pokemon(gen, 'Volcarona', {
+      level: 50,
+      ability: 'Flame Body',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Heat Wave', 'Bug Buzz'],
+    });
+    const volcScarf = new Pokemon(gen, 'Volcarona', {
+      level: 50,
+      item: 'Choice Scarf',
+      ability: 'Flame Body',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Heat Wave', 'Bug Buzz'],
+    });
+    const volcSlot: OppSlotPriors = {
+      representative: volcNoItem,
+      kits: [
+        {
+          pokemon: volcNoItem,
+          kit: {
+            species: 'Volcarona',
+            item: '',
+            ability: 'Flame Body',
+            moves: ['Heat Wave', 'Bug Buzz'],
+          },
+          weight: 0.5,
+        },
+        {
+          pokemon: volcScarf,
+          kit: {
+            species: 'Volcarona',
+            item: 'Choice Scarf',
+            ability: 'Flame Body',
+            moves: ['Heat Wave', 'Bug Buzz'],
+          },
+          weight: 0.5,
+        },
+      ],
+    };
+
+    // 4-mon TR-tuned bring; all min-speed natures + 0-spe IVs so they
+    // sit well under both Volcarona branches.
+    const slow1 = new Pokemon(gen, 'Iron Hands', {
+      level: 50,
+      ability: 'Quark Drive',
+      nature: 'Brave',
+      ivs: { spe: 0 },
+      evs: { hp: 252, atk: 252 },
+      moves: ['Drain Punch', 'Wild Charge'],
+    });
+    const slow2 = new Pokemon(gen, 'Hatterene', {
+      level: 50,
+      ability: 'Magic Bounce',
+      nature: 'Quiet',
+      ivs: { spe: 0 },
+      evs: { hp: 252, spa: 252 },
+      moves: ['Dazzling Gleam', 'Psychic'],
+    });
+    const slow3 = new Pokemon(gen, 'Ursaluna', {
+      level: 50,
+      ability: 'Guts',
+      nature: 'Brave',
+      ivs: { spe: 0 },
+      evs: { hp: 252, atk: 252 },
+      moves: ['Headlong Rush', 'Facade'],
+    });
+    const slow4 = new Pokemon(gen, 'Torkoal', {
+      level: 50,
+      ability: 'Drought',
+      nature: 'Quiet',
+      ivs: { spe: 0 },
+      evs: { hp: 252, spa: 252 },
+      moves: ['Eruption', 'Earth Power'],
+    });
+
+    const myTeam = [slow1, slow2, slow3, slow4] as const;
+    const ranked = recommendBPFromSpecies(gen, myTeam, [volcSlot], WEIGHTS, {
+      field: DOUBLES,
+      topK: 1,
+      sideSpeedModifiers: { my: { trickRoom: true } },
+    });
+
+    const top = ranked.picks[0];
+    expect(top).toBeDefined();
+    if (!top) return;
+    // Both kit branches are "beaten" under TR (slower wins) → full
+    // credit on a single opp slot.
+    expect(top.score.breakdown.pickedOutspeedOpp).toBeCloseTo(1, 6);
+  });
+
+  it('per-kit speed delta is independent of which representative the opp slot exposes', () => {
+    // Same Scarf vs. no-Scarf scenario as above, but flip which kit is
+    // the slot's `representative`. The pre-fix path's
+    // `pickedOutspeedOpp` would shift in lockstep with the
+    // representative choice (because it read one effective speed per
+    // slot from the global `SpeedRanking`, keyed off the
+    // representative `Pokemon`). The fix decouples the speed term from
+    // the representative and instead reads `KitCell.effectiveSpeed`
+    // per kit — the result must match the previous test exactly.
+    const volcNoItem = new Pokemon(gen, 'Volcarona', {
+      level: 50,
+      ability: 'Flame Body',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Heat Wave', 'Bug Buzz'],
+    });
+    const volcScarf = new Pokemon(gen, 'Volcarona', {
+      level: 50,
+      item: 'Choice Scarf',
+      ability: 'Flame Body',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Heat Wave', 'Bug Buzz'],
+    });
+    // Swap the representative to the Scarf branch.
+    const volcSlot: OppSlotPriors = {
+      representative: volcScarf,
+      kits: [
+        {
+          pokemon: volcNoItem,
+          kit: {
+            species: 'Volcarona',
+            item: '',
+            ability: 'Flame Body',
+            moves: ['Heat Wave', 'Bug Buzz'],
+          },
+          weight: 0.5,
+        },
+        {
+          pokemon: volcScarf,
+          kit: {
+            species: 'Volcarona',
+            item: 'Choice Scarf',
+            ability: 'Flame Body',
+            moves: ['Heat Wave', 'Bug Buzz'],
+          },
+          weight: 0.5,
+        },
+      ],
+    };
+
+    const ironValiant = new Pokemon(gen, 'Iron Valiant', {
+      level: 50,
+      ability: 'Quark Drive',
+      nature: 'Naive',
+      evs: { atk: 4, spa: 252, spe: 252 },
+      moves: ['Moonblast', 'Close Combat'],
+    });
+    const tornadus = new Pokemon(gen, 'Tornadus', {
+      level: 50,
+      ability: 'Prankster',
+      nature: 'Timid',
+      evs: { hp: 4, spa: 252, spe: 252 },
+      moves: ['Bleakwind Storm', 'Air Slash'],
+    });
+    const flutter = new Pokemon(gen, 'Flutter Mane', {
+      level: 50,
+      ability: 'Protosynthesis',
+      nature: 'Timid',
+      evs: { spa: 252, spe: 252 },
+      moves: ['Moonblast', 'Shadow Ball'],
+    });
+    const roaringMoon = new Pokemon(gen, 'Roaring Moon', {
+      level: 50,
+      ability: 'Protosynthesis',
+      nature: 'Jolly',
+      evs: { atk: 252, spe: 252 },
+      moves: ['Knock Off', 'Iron Head'],
+    });
+
+    const myTeam = [ironValiant, tornadus, flutter, roaringMoon] as const;
+
+    const ranked = recommendBPFromSpecies(gen, myTeam, [volcSlot], WEIGHTS, {
+      field: DOUBLES,
+      topK: 1,
+    });
+
+    const top = ranked.picks[0];
+    expect(top).toBeDefined();
+    if (!top) return;
+    expect(top.score.breakdown.pickedOutspeedOpp).toBeCloseTo(0.5, 6);
+  });
+});

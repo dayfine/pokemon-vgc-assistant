@@ -70,7 +70,18 @@ function stageMultiplier(boost: StatStage): number {
   return boost >= 0 ? (2 + boost) / 2 : 2 / (2 - boost);
 }
 
-function effectiveSpeed(
+/**
+ * Compute the effective speed of a single Pokémon under the given
+ * per-mon and side-level modifiers. Exported so the matrix layer can
+ * pre-compute `KitCell.effectiveSpeed` from each opp kit candidate's
+ * `Pokemon` (item / ability / spread already baked in) using the same
+ * arithmetic the global `speedTiers` ranking uses.
+ *
+ * `mods.choiceScarf` defaults to `pokemon.item === 'Choice Scarf'`, so
+ * passing a kit's `Pokemon` straight in is enough to pick up scarf
+ * branches — no extra plumbing needed at the call site.
+ */
+export function effectiveSpeed(
   pokemon: Pokemon,
   mods: MonSpeedModifiers,
   side: SideSpeedModifiers,
@@ -104,13 +115,13 @@ export function speedTiers(
   const opp = sideMods.opp ?? {};
 
   const entries: SpeedEntry[] = inputs.map((inp) => {
-    const side = inp.side === 'my' ? my : opp;
+    const sideForEntry = inp.side === 'my' ? my : opp;
     const mods = inp.mods ?? {};
     return {
       pokemon: inp.pokemon,
       side: inp.side,
       base: inp.pokemon.stats.spe,
-      effective: effectiveSpeed(inp.pokemon, mods, side),
+      effective: effectiveSpeed(inp.pokemon, mods, sideForEntry),
     };
   });
 

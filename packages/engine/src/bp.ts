@@ -121,6 +121,12 @@ export function recommendBP(
     ...(options.outcomeProbability !== undefined
       ? { outcomeProbability: options.outcomeProbability }
       : {}),
+    // Forward side speed modifiers so KitCell.effectiveSpeed reflects the
+    // active Tailwind / Trick Room state (the same state the score-side
+    // SpeedRanking is built under, for my-side speeds).
+    ...(options.sideSpeedModifiers !== undefined
+      ? { sideSpeedModifiers: options.sideSpeedModifiers }
+      : {}),
   });
   const speedInputs: SpeedInput[] = [
     ...myTeam.map((p): SpeedInput => ({ pokemon: p, side: 'my' })),

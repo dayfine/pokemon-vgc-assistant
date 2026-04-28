@@ -3,11 +3,15 @@
 ## Last updated: 2026-04-27
 
 ## Status
-MERGED
+IN_PROGRESS
 
 ## Current milestone
-None — engine track is feature-complete for v1 through M3.5. Re-open
-only for further M-track follow-ups or v2 work.
+M3.5 follow-up — kit-aware `pickedOutspeedOpp`. Re-opened to close the
+known gap from PR #14: speed comparison was using one effective speed
+per opp slot (the slot's representative `Pokemon`); multi-kit slots
+that include Choice Scarf branches lost that delta. This slice carries
+per-kit `effectiveSpeed` on `KitCell` and rewrites
+`score.pickedOutspeedOpp` as a weighted sum across kit cells.
 
 ## Completed
 - M1: engine skeleton + calc wrapper + 5 pinned Gen 9 calcs (PR #2, merged)
@@ -49,13 +53,17 @@ only for further M-track follow-ups or v2 work.
   math, not legality. Cleanup to use M-A-legal species is a follow-up
   slice when engine adopts legality validation (likely when `@pkmn/dex`
   ships gen9champions data).
-- `pickedOutspeedOpp` ignores per-kit speed deltas (Choice Scarf,
-  ability-driven multipliers). Speed comparison currently uses the
-  slot's `representative` Pokemon. Designed-out separately —
-  see PR forthcoming for the kit-aware-speed slice.
 
 ## In Progress
-(none)
+- M3.5 follow-up — kit-aware `pickedOutspeedOpp`. `KitCell` carries an
+  `effectiveSpeed: number` field (computed at matrix build time via
+  `speed.ts.effectiveSpeed(kit.pokemon, {}, sideMods.opp)`); `score`
+  reads it per kit cell and weighted-sums across the kit-cell axis.
+  Single-kit reduction preserves M3 ordering bit-for-bit (the
+  `bp-species.test.ts` deep-equal identity test stays green). Three new
+  tests (`bp-species.test.ts`): Choice Scarf delta lands at exactly
+  0.5 ± rounding; representative-independence (swap which kit is
+  representative, result is identical); Trick Room flip preserved.
 
 ## Blocking refactors
 (none)
@@ -72,11 +80,6 @@ only for further M-track follow-ups or v2 work.
   strictly-faster mons — equal-effective-speed ties are not flagged in
   the score breakdown. Surface ties to the report layer (M6) so
   rationale text can call them out.
-- Multi-kit `pickedOutspeedOpp`: currently uses the opp slot's
-  *representative* speed only; the kit-cell aggregator ignores per-kit
-  speed variation (Choice Scarf vs. no Scarf shifts the speed tier).
-  Lift to a kit-aware speed term when `recommendBPFromSpecies` callers
-  pass kits with item-driven speed deltas.
 - `pva.config.ts` ships with `scoreWeights` only in M3; the other
   tunables (`format`, `sheetMode`, `priorsCacheTtl`, `claudeModel`) are
   scaffolded as TODO-typed and left to their respective milestones.
@@ -103,3 +106,10 @@ only for further M-track follow-ups or v2 work.
   expected count; we don't model joint scenarios like "if opp kit at
   slot 0 is Specs, slot 3 is more likely Sash"). Documented in
   `dev/plans/03-priors-design.md` and accepted as v1.
+- Item Clause (no two mons on a brought team share an item) is not
+  modeled in the kit-aware `pickedOutspeedOpp` aggregation. The score
+  is a sum of *marginal* expectations per opp slot, and Item Clause
+  affects only joint events (e.g. P(slot 0 Scarf ∧ slot 1 Scarf) = 0,
+  not the product of marginals). The score function never queries those
+  joints — but joint-event speed analysis (M7+) would need to revisit.
+  Documented in JSDoc on `score.ts.pickedOutspeedOpp`.

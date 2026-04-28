@@ -84,9 +84,18 @@ export interface KitDescriptor {
  * mons themselves are concrete (`my` team is fully typed input), so the
  * uncertainty axis is symmetric: it's always the *opp* who is unknown
  * under closed-sheet input.
+ *
+ * `effectiveSpeed` is the opp-side kit's speed under the matrix's active
+ * `sideMods` (Trick Room / Tailwind / Choice Scarf via the kit's `item`).
+ * It carries per-kit speed deltas (Choice Scarf branches, ability-driven
+ * multipliers when those land) into the score layer, so
+ * `score.pickedOutspeedOpp` can weight by kit cell instead of collapsing
+ * to one effective speed per opp slot. The math reuses the same
+ * `effectiveSpeed` helper `speed.ts` uses for the global ranking.
  */
 export interface KitCell {
   readonly weight: number;
   readonly kit: KitDescriptor;
   readonly matchups: readonly Matchup[];
+  readonly effectiveSpeed: number;
 }

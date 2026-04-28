@@ -113,6 +113,12 @@ function wrapAsKitCells(
         // them via the matchup payload. Keep the shape minimal.
         kit: { species: '', item: '', ability: '', moves: [] },
         matchups,
+        // The guard tests use `EMPTY_SPEED`, so `pickedOutspeedOpp` short-
+        // circuits before reading `effectiveSpeed`. Pin to 0 so the field
+        // is structurally present (the type requires it) and so any future
+        // test that supplies a non-empty SpeedRanking gets predictable
+        // "no opp outspeeds" arithmetic.
+        effectiveSpeed: 0,
       },
     ]),
   );
