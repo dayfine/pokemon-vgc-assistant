@@ -9,7 +9,7 @@ READY_FOR_REVIEW
 M6.5.0 — recommender package, simple slice
 
 ## Completed
-- **M6.5.0 simple slice** (PR #PR_PLACEHOLDER) — scaffolded
+- **M6.5.0 simple slice** (PR #23) — scaffolded
   `packages/recommender/` per `dev/plans/06-recommender-design.md`:
   `recommend()` public entry with mocked-client + injected-client
   tests against the 2026-04-28 experiment fixture, 13 hand-curated
