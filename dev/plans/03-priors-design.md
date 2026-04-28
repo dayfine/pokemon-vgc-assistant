@@ -111,18 +111,27 @@ Algorithm:
    moves* (as a set; we don't yet model move-correlation).
 3. For each item bucket, attach a hand-curated **representative spread**
    from a small lookup table at `packages/priors/src/spreads.ts`.
-   - Bulky physical bucket: `252 HP / 252 Def / 4 SpD`, neutral nature.
-   - Bulky special bucket: `252 HP / 4 Def / 252 SpD`.
-   - Offensive physical bucket: `4 HP / 252 Atk / 252 Spe`, +Atk nature.
-   - Offensive special bucket: `4 HP / 252 SpA / 252 Spe`, +SpA nature.
-   - Speed-control / utility bucket: `252 HP / 4 Def / 252 Spe`, +Spe.
+   - Bulky physical bucket: `252 HP / 252 Def / 4 SpD`, **Impish** (+Def).
+   - Bulky special bucket: `252 HP / 4 Def / 252 SpD`, **Careful** (+SpD).
+   - Offensive physical bucket: `4 HP / 252 Atk / 252 Spe`, Adamant (+Atk).
+   - Offensive special bucket: `4 HP / 252 SpA / 252 Spe`, Modest (+SpA).
+   - Speed-control / utility bucket: `252 HP / 4 Def / 252 Spe`, Timid (+Spe).
+   The bulky buckets use defensive-boosting natures rather than neutral —
+   competitive walls almost universally invest the nature into their
+   defended axis. (Earlier drafts of this doc said "neutral"; impl
+   intentionally diverged and the doc has been corrected.)
 4. Tera: M-A is no-Tera, so leave as `undefined`. (Format-agnostic shape
    keeps Tera in `KitCandidate` for future formats.)
 
 Output: `KitCandidate[]` with weights normalised to sum to 1.0 across the
-returned candidates. Probability mass below the threshold is truncated,
-not redistributed proportionally — explicit "we don't model the long
-tail" rather than implicit re-weighting.
+returned candidates. Sub-threshold mass is dropped (not promoted into a
+separate "unknown kit" bucket), and the kept-set weights are then
+renormalised to sum to 1.0. The model is therefore *overconfident* on
+the truncated mass — we treat the top-K as the universe — but we do not
+redistribute mass proportionally back to specific lower-probability
+items. Acceptable v1 simplification; revisit if the truncation error
+shows up empirically (e.g. a real game where the bring picked against
+the wrong opp threat because the actual kit was in the truncated tail).
 
 ### Pipeline integration (matrix layer)
 
