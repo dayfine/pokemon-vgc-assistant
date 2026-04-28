@@ -193,7 +193,7 @@ const ranked = recommendBP(gen, myTeam, oppTeam, config.scoreWeights, {
 console.log('=== Demo: champions-team-preview-zh-tw-2026-04-28-001.jpg ===\n');
 console.log('My team (6):  ', myTeam.map((p) => p.name).join(', '));
 console.log('Opp team (6): ', oppTeam.map((p) => p.name).join(', '));
-console.log(`\nWeights:`, JSON.stringify(config.scoreWeights, null, 2));
+console.log('\nWeights:', JSON.stringify(config.scoreWeights, null, 2));
 console.log(`\nTop ${ranked.picks.length} bring picks:\n`);
 
 for (let i = 0; i < ranked.picks.length; i++) {
@@ -202,11 +202,19 @@ for (let i = 0; i < ranked.picks.length; i++) {
   const b = pick.score.breakdown;
   console.log(`#${i + 1}  total=${pick.score.total.toFixed(2)}`);
   console.log(`    combo:    ${combo}`);
-  console.log(`    breakdown:`);
-  console.log(`      pickedKoOpp:        ${b.pickedKoOpp.toFixed(2)}  (× ${config.scoreWeights.ohkoThreats})`);
-  console.log(`      pickedOutspeedOpp:  ${b.pickedOutspeedOpp.toFixed(2)}  (× ${config.scoreWeights.speedControl})`);
-  console.log(`      pickedSurvivesOpp:  ${b.pickedSurvivesOpp.toFixed(2)}  (× ${config.scoreWeights.defensiveAnswers})`);
-  console.log(`      oppKoPicked:        ${b.oppKoPicked.toFixed(2)}  (× -${config.scoreWeights.ohkoTaken})`);
+  console.log('    breakdown:');
+  console.log(
+    `      pickedKoOpp:        ${b.pickedKoOpp.toFixed(2)}  (× ${config.scoreWeights.ohkoThreats})`,
+  );
+  console.log(
+    `      pickedOutspeedOpp:  ${b.pickedOutspeedOpp.toFixed(2)}  (× ${config.scoreWeights.speedControl})`,
+  );
+  console.log(
+    `      pickedSurvivesOpp:  ${b.pickedSurvivesOpp.toFixed(2)}  (× ${config.scoreWeights.defensiveAnswers})`,
+  );
+  console.log(
+    `      oppKoPicked:        ${b.oppKoPicked.toFixed(2)}  (× -${config.scoreWeights.ohkoTaken})`,
+  );
   console.log(`      unfilledRoles:      ${b.unfilledRoles}  (× -${config.scoreWeights.roleGap})`);
   console.log('');
 }
