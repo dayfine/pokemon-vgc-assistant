@@ -29,12 +29,17 @@ M4.5 — threshold-probability layer
 (none)
 
 ## Follow-up
-- **Engine matrix-payload swap.** With `outcomeProbability` validated
+- ~~**Engine matrix-payload swap.** With `outcomeProbability` validated
   in isolation, the next slice migrates the engine matrix cell payload
   from `Matchup[]` to a real-valued representation that carries
   `OutcomeProbability` per (attacker_kit, defender_kit, move). Lives on
   the engine track, not priors. Score function then sums expected
-  counts instead of binary indicators (per design doc §M4.5).
+  counts instead of binary indicators (per design doc §M4.5).~~ Shipped
+  on the engine track as M3.5 (`recommendBPFromSpecies` + `KitCell`
+  matrix payload). Engine takes `outcomeProbability` as an injected
+  function param (`OutcomeProbabilityFn`) so the priors→engine
+  types-only edge stays clean — the CLI / web layer wires
+  `priors.outcomeProbability` through at call time.
 - **Smogon chaos JSON** — still not published for
   `gen9championsvgc2026regma` as of 2026-04-27. `sources/smogon.ts`
   follow-up once chaos has M-A data; first plausible drop is early

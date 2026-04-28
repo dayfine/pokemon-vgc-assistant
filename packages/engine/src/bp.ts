@@ -1,11 +1,12 @@
 import type { Field } from '@smogon/calc';
 import type { Generation } from '@smogon/calc/dist/data/interface';
 import { matrix } from './matrix.js';
+import type { OppKitOption, OutcomeProbabilityFn } from './matrix.js';
 import { score } from './score.js';
 import type { Score, ScoreWeights } from './score.js';
 import { speedTiers } from './speed.js';
 import type { SideSpeedModifiers, SpeedInput } from './speed.js';
-import type { Side, TeamSet } from './types.js';
+import type { Pokemon, Side, TeamSet } from './types.js';
 
 /**
  * One ranked entry in `recommendBP`'s output: the picked 4-mon combo and
@@ -43,6 +44,19 @@ export interface RecommendBpOptions {
    * returned array.
    */
   readonly topK?: number;
+  /**
+   * Optional per-opp-slot kit candidates. When provided, the matrix
+   * iterates over them and `score` consumes weighted KitCell payloads.
+   * Length must match `oppTeam`. Omit for the M3 backwards-compat path:
+   * each cell collapses to a single weight-1 KitCell built from the
+   * concrete opp Pokémon.
+   */
+  readonly oppKits?: ReadonlyArray<readonly OppKitOption[]>;
+  /**
+   * Optional outcome-probability function. Forwarded to `matrix`. See
+   * `OutcomeProbabilityFn` for the dep-direction rationale.
+   */
+  readonly outcomeProbability?: OutcomeProbabilityFn;
 }
 
 const DEFAULT_TOP_K = 3;
@@ -87,6 +101,11 @@ function combinations<T>(team: readonly T[], k: number): T[][] {
  * generation order (earlier = higher), which matches the natural reading
  * of `myTeam` left-to-right. v1 doesn't claim a meaningful tiebreaker;
  * tests assert *strict* ordering between distinct totals only.
+ *
+ * Open-sheet equivalent: callers who already know opp's full kits pass
+ * concrete `Pokemon`s in `oppTeam` and omit `oppKits`. Closed-sheet
+ * callers (only species available) build `oppKits` from priors and pass
+ * representative `Pokemon`s in `oppTeam` — see `recommendBPFromSpecies`.
  */
 export function recommendBP(
   gen: Generation,
@@ -96,10 +115,13 @@ export function recommendBP(
   options: RecommendBpOptions = {},
 ): RankedPicks {
   const topK = options.topK ?? DEFAULT_TOP_K;
-  const m =
-    options.field === undefined
-      ? matrix(gen, myTeam, oppTeam)
-      : matrix(gen, myTeam, oppTeam, { field: options.field });
+  const m = matrix(gen, myTeam, oppTeam, {
+    ...(options.field !== undefined ? { field: options.field } : {}),
+    ...(options.oppKits !== undefined ? { oppKits: options.oppKits } : {}),
+    ...(options.outcomeProbability !== undefined
+      ? { outcomeProbability: options.outcomeProbability }
+      : {}),
+  });
   const speedInputs: SpeedInput[] = [
     ...myTeam.map((p): SpeedInput => ({ pokemon: p, side: 'my' })),
     ...oppTeam.map((p): SpeedInput => ({ pokemon: p, side: 'opp' })),
@@ -117,4 +139,66 @@ export function recommendBP(
   ranked.sort((a, b) => b.score.total - a.score.total);
 
   return { picks: ranked.slice(0, topK) };
+}
+
+/**
+ * One opp slot's kit-candidate distribution, as `recommendBPFromSpecies`
+ * consumes it. The `pokemon` is the representative `Pokemon` to use for
+ * speed/role lookups (the highest-weight kit makes a fine choice); the
+ * `kits` enumerate the full distribution for the matrix layer.
+ *
+ * Why a separate type and not just `OppKitOption[]`: the species-input
+ * path also needs *one canonical Pokémon per opp slot* for the speed
+ * ranking, which lives in `oppTeam` and isn't re-derivable from kit
+ * options alone (each kit option's `pokemon` is built for damage calc;
+ * the speed layer picks one).
+ */
+export interface OppSlotPriors {
+  readonly representative: Pokemon;
+  readonly kits: readonly OppKitOption[];
+}
+
+export interface RecommendBpFromSpeciesOptions {
+  readonly field?: Field;
+  readonly sideSpeedModifiers?: { [K in Side]?: SideSpeedModifiers };
+  readonly topK?: number;
+  /**
+   * Optional outcome-probability function — see `OutcomeProbabilityFn`.
+   * Closed-sheet callers wire `priors.outcomeProbability(...)` here at
+   * the CLI/web layer.
+   */
+  readonly outcomeProbability?: OutcomeProbabilityFn;
+}
+
+/**
+ * Closed-sheet entry point: caller passes opp species + priors instead
+ * of fully-built opp `Pokemon`s. The function reduces to `recommendBP`
+ * after picking each opp slot's `representative` for speed-ranking and
+ * threading `kits` into the matrix.
+ *
+ * Why a separate entry point and not a polymorphic overload of
+ * `recommendBP`: explicit typing of the closed-sheet shape keeps M3's
+ * concrete-`Pokemon` ergonomics pristine for tests / open-sheet callers,
+ * and avoids `unknown`-style narrowing inside the function body.
+ */
+export function recommendBPFromSpecies(
+  gen: Generation,
+  myTeam: TeamSet,
+  oppSlots: readonly OppSlotPriors[],
+  weights: ScoreWeights,
+  options: RecommendBpFromSpeciesOptions = {},
+): RankedPicks {
+  const oppTeam = oppSlots.map((s) => s.representative);
+  const oppKits = oppSlots.map((s) => s.kits);
+  return recommendBP(gen, myTeam, oppTeam, weights, {
+    ...(options.field !== undefined ? { field: options.field } : {}),
+    ...(options.sideSpeedModifiers !== undefined
+      ? { sideSpeedModifiers: options.sideSpeedModifiers }
+      : {}),
+    ...(options.topK !== undefined ? { topK: options.topK } : {}),
+    ...(options.outcomeProbability !== undefined
+      ? { outcomeProbability: options.outcomeProbability }
+      : {}),
+    oppKits,
+  });
 }

@@ -14,19 +14,25 @@ const gen = getGeneration();
  * Flatten one side of a matrix into stable, snapshot-friendly rows.
  * The matrix carries `Pokemon`/`Move` instances which are heavy and noisy in
  * snapshots; keep only the names + numeric damage here.
+ *
+ * The cell shape is `KitCell[]` per (a, d) — for the M3 backwards-compat
+ * path each cell has exactly one weight-1 KitCell whose `matchups` array
+ * is the M3 `Matchup[]`. Flatten through both axes.
  */
 function flattenSide(side: MatrixSide) {
   return side.cells.flatMap((row, ai) =>
     row.flatMap((cell, di) =>
-      cell.map((m) => ({
-        attacker: side.attackers[ai]?.name ?? '?',
-        defender: side.defenders[di]?.name ?? '?',
-        move: m.move.name,
-        min: m.damage.min,
-        max: m.damage.max,
-        koChance: m.damage.koChance,
-        notation: m.damage.notation,
-      })),
+      cell.flatMap((kc) =>
+        kc.matchups.map((m) => ({
+          attacker: side.attackers[ai]?.name ?? '?',
+          defender: side.defenders[di]?.name ?? '?',
+          move: m.move.name,
+          min: m.damage.min,
+          max: m.damage.max,
+          koChance: m.damage.koChance,
+          notation: m.damage.notation,
+        })),
+      ),
     ),
   );
 }
@@ -269,7 +275,10 @@ describe('matrix — Calyrex-Shadow archetype vs. Miraidon archetype (doubles)',
       moves: ['Moonblast'],
     });
     const m = matrix(gen, [calyShadow], [flutter]);
-    const myCells = m.my.cells[0]?.[0] ?? [];
-    expect(myCells.map((c) => c.move.name)).toEqual(['Astral Barrage']);
+    // M3 backwards-compat path: a single weight-1 KitCell per (a, d) pair.
+    // Flatten the kit-cell axis to read out per-move identity.
+    const myKitCells = m.my.cells[0]?.[0] ?? [];
+    const myMoves = myKitCells.flatMap((kc) => kc.matchups.map((m) => m.move.name));
+    expect(myMoves).toEqual(['Astral Barrage']);
   });
 });
