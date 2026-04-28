@@ -3,7 +3,7 @@
 ## Last updated: 2026-04-27
 
 ## Status
-IN_PROGRESS
+READY_FOR_REVIEW
 
 ## Current milestone
 M3.5 follow-up — kit-aware `pickedOutspeedOpp`. Re-opened to close the
@@ -11,9 +11,22 @@ known gap from PR #14: speed comparison was using one effective speed
 per opp slot (the slot's representative `Pokemon`); multi-kit slots
 that include Choice Scarf branches lost that delta. This slice carries
 per-kit `effectiveSpeed` on `KitCell` and rewrites
-`score.pickedOutspeedOpp` as a weighted sum across kit cells.
+`score.pickedOutspeedOpp` as a weighted sum across kit cells. PR #16
+opened.
 
 ## Completed
+- M3.5 follow-up — kit-aware `pickedOutspeedOpp` (PR #16, in review).
+  - `KitCell.effectiveSpeed: number` carried per kit at matrix build
+    time via `speed.ts.effectiveSpeed(kit.pokemon, {}, sideMods.opp)`.
+  - `score.pickedOutspeedOpp` weighted-sums across the kit-cell axis;
+    comparator flips under Trick Room.
+  - `MatrixOptions.sideSpeedModifiers` plumbed through `recommendBP`.
+  - Single-kit reduction preserves M3 ordering bit-for-bit.
+  - Three new bp-species tests: Scarf delta = 0.5 ± rounding;
+    representative-independence; TR flip preserved.
+  - Item Clause not modeled (sum of marginals — joint events not
+    queried by score). Documented on `score.ts.pickedOutspeedOpp`.
+  - 22 → 25 engine tests, 93 priors tests unchanged.
 - M1: engine skeleton + calc wrapper + 5 pinned Gen 9 calcs (PR #2, merged)
 - M2: KO matrix + speed tiers + Side / StatStage explicit types (PRs #6, #7-CI)
 - M3: BP scoring — `engine.score(combo, oppTeam, matrix, speed, weights) → Score`
@@ -55,15 +68,7 @@ per-kit `effectiveSpeed` on `KitCell` and rewrites
   ships gen9champions data).
 
 ## In Progress
-- M3.5 follow-up — kit-aware `pickedOutspeedOpp`. `KitCell` carries an
-  `effectiveSpeed: number` field (computed at matrix build time via
-  `speed.ts.effectiveSpeed(kit.pokemon, {}, sideMods.opp)`); `score`
-  reads it per kit cell and weighted-sums across the kit-cell axis.
-  Single-kit reduction preserves M3 ordering bit-for-bit (the
-  `bp-species.test.ts` deep-equal identity test stays green). Three new
-  tests (`bp-species.test.ts`): Choice Scarf delta lands at exactly
-  0.5 ± rounding; representative-independence (swap which kit is
-  representative, result is identical); Trick Room flip preserved.
+(none — awaiting review on PR #16)
 
 ## Blocking refactors
 (none)
