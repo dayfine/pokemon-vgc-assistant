@@ -390,6 +390,45 @@ See `dev/plans/04-live-capture.md`.
 - Probably belongs in `04-live-capture.md`'s phase plan rather than
   here; cross-referenced for visibility.
 
+### M5.7 — builder-screen vision (deferred)
+
+Until M5.7 ships, my-team is hand-typed Showdown-export per
+`dev/plans/07-cli-design.md` §"M6.0 — CLI scaffold". M5.7 layers in
+**team-builder vision**: a different prompt + aggregator that ingests
+the Switch builder UI's per-Pokémon detail captures and emits a
+Showdown-export `.txt` to the CLI's `<teamsDir>` storage location.
+
+Two screenshots per Pokémon (12 total for a six-mon team):
+
+1. **Moves + item view** — species, item icon, ability label, four
+   moves, gender, type icons.
+2. **EVs + nature view** — stat-spread page with EV allocation,
+   nature, IV markers (for the ATS-aware speed tier in priors).
+
+Output: a Showdown-export `.txt` matching what the CLI's
+`pva teams import` (M6.3) writes. The builder-screen extractor
+shares the parse / validate / client wiring with M5.0's
+team-preview extractor; the prompt + aggregation logic is the
+delta.
+
+Open questions deferred to dispatch:
+
+- Single-call multi-image vs. one call per screenshot pair.
+  Anthropic's Vision API accepts multiple image blocks in one
+  message; cheaper to bundle but harder to pin per-mon results.
+- EV-allocation reading robustness vs. locale. Numeric EVs are
+  digits regardless of locale, so OCR-of-numbers is acceptable for
+  this view (sprite-based ID is still load-bearing for species and
+  item).
+- Validation of EVs/IVs against M-A's Stat Points (SP) system. SP
+  has different math from EVs; we may need to convert, or reject
+  EV-style spreads under SP formats. Cross-reference
+  `dev/research/champions-2026-04-26.md` and the priors spread
+  system before implementing.
+
+Lands as a separate vision-track milestone after M6.0 ships and
+real ladder use surfaces what's painful about hand-typing teams.
+
 ## Dependencies
 
 - `@pva/engine` for `Format` and other shared types (types-only).
