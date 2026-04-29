@@ -438,8 +438,13 @@ export const FACTS: readonly Fact[] = [
   },
   {
     key: 'aurora-veil-snow-screens',
-    applies: (myTeam, oppTeam) => teamHas(myTeam, 'Ninetales') || teamHas(oppTeam, 'Ninetales'),
+    applies: (myTeam, oppTeam) =>
+      teamHas(myTeam, 'Ninetales-Alola') || teamHas(oppTeam, 'Ninetales-Alola'),
     text: 'Alolan Ninetales (Snow Warning) sets snow and unlocks Aurora Veil — combined Reflect + Light Screen for 5 turns, scaling to 8 with Light Clay. Aurora Veil only sets while snow is active; cutting snow (Drizzle / Drought / Sand Stream override) drops the screen-setup window.',
+    claims: [
+      { species: ['Ninetales-Alola'], ability: 'Snow Warning' },
+      { species: ['Ninetales-Alola'], move: 'Aurora Veil' },
+    ],
   },
   {
     key: 'iron-defense-body-press-setup',
