@@ -1,5 +1,5 @@
 {
-  "name": "@pva/recommender",
+  "name": "@pva/vision",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,10 +18,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
-    "@pva/engine": "workspace:*"
+    "@pva/engine": "workspace:*",
+    "@pva/showdown-data": "workspace:*"
   },
   "devDependencies": {
-    "@pva/showdown-data": "workspace:*",
     "@types/node": "^18.19.130",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8"

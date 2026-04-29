@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { FACTS } from '../src/facts';
 import {
   itemExists,
   megaStoneTriggers,
   speciesHasAbility,
   speciesLearnsMoveGen9,
   toID,
-} from './helpers/showdown-snapshot';
+} from '@pva/showdown-data';
+import { FACTS } from '../src/facts';
 
 /**
  * M6.5.3 facts data gate. Iterates every fact's `claims` × the vendored

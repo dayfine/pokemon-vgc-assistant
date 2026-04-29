@@ -56,6 +56,43 @@ importers:
         specifier: workspace:*
         version: link:../engine
     devDependencies:
+      '@pva/showdown-data':
+        specifier: workspace:*
+        version: link:../showdown-data
+      '@types/node':
+        specifier: ^18.19.130
+        version: 18.19.130
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@18.19.130)
+
+  packages/showdown-data:
+    devDependencies:
+      '@types/node':
+        specifier: ^18.19.130
+        version: 18.19.130
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@18.19.130)
+
+  packages/vision:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.65.0
+        version: 0.65.0
+      '@pva/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@pva/showdown-data':
+        specifier: workspace:*
+        version: link:../showdown-data
+    devDependencies:
       '@types/node':
         specifier: ^18.19.130
         version: 18.19.130
