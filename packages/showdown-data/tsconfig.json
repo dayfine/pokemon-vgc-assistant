@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "snapshot/**/*"],
+  "exclude": ["dist", "node_modules", "test", "snapshot/gen9champions/moves.ts"]
+}

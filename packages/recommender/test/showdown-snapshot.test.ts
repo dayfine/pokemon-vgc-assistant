@@ -7,7 +7,7 @@ import {
   speciesHasAbility,
   speciesLearnsMoveGen9,
   toID,
-} from './helpers/showdown-snapshot';
+} from '@pva/showdown-data';
 
 describe('showdown-snapshot loader', () => {
   describe('toID', () => {

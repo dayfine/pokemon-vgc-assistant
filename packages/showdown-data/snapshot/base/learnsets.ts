@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored Showdown data; runtime hooks reference sim-only types we do not ship.
 export const Learnsets: any = {
 	missingno: {
 		learnset: {
