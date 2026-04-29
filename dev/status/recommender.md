@@ -22,7 +22,7 @@ M6.5.2 — series-level notes integration (M7 hook)
   `RUN_LIVE_TESTS=1`. Anthropic SDK (`^0.65.0`) added as the only new
   runtime dep; `process.env` access scoped to `client.ts`; format ID
   literal scoped to `prompt.ts` `FORMAT_RULES` map.
-- **M6.5.1 facts expansion** (PR #TBD) — `facts.ts` grew from 12 to
+- **M6.5.1 facts expansion** (PR #25) — `facts.ts` grew from 12 to
   38 hand-curated facts and from ~21 to 38 unique M-A-legal species
   referenced across predicates. New coverage spans redirection
   (Amoonguss, Whimsicott Prankster, Gholdengo Good as Gold), weather
