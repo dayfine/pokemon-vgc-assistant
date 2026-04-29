@@ -1,9 +1,12 @@
 # recommender track
 
-## Last updated: 2026-04-28
+## Last updated: 2026-04-29
 
 ## Status
-READY_FOR_REVIEW
+READY_FOR_REVIEW (rework applied, awaiting re-QC)
+
+structural_qc: APPROVED 2026-04-29
+behavioral_qc: NEEDS_REWORK 2026-04-29 — rework pushed (Sneasler/Sinistcha removed from `helping-hand-damage-chain`; Spore/Smeargle stripped from `safety-goggles-vs-redirection`; M-B stub TODO + non-self-referential prose). Re-run behavioral QC against new tip SHA. See `dev/reviews/m6.5.1-facts-expansion.md` for original findings.
 
 ## Current milestone
 M6.5.2 — series-level notes integration (M7 hook)

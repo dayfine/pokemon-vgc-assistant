@@ -254,7 +254,7 @@ export const FACTS: readonly Fact[] = [
   {
     key: 'safety-goggles-vs-redirection',
     applies: (myTeam) => teamHasItem(myTeam, 'Safety Goggles'),
-    text: 'Safety Goggles ignore Rage Powder / Spore (also blocks weather chip — sand, hail). A Goggles holder bypasses Sinistcha / Amoonguss / Smeargle redirection, letting attacks land on the intended target. Particularly load-bearing on a setup sweeper that needs to KO the redirector itself.',
+    text: 'Safety Goggles ignore Rage Powder (also blocks weather chip — sand, hail). A Goggles holder bypasses Sinistcha / Amoonguss redirection, letting attacks land on the intended target. Particularly load-bearing on a setup sweeper that needs to KO the redirector itself.',
   },
   {
     key: 'covert-cloak-blocks-flinch',
@@ -305,7 +305,7 @@ export const FACTS: readonly Fact[] = [
   {
     key: 'helping-hand-damage-chain',
     applies: (myTeam) => {
-      const hhUsers = ['Indeedee-F', 'Sinistcha', 'Whimsicott', 'Sneasler'];
+      const hhUsers = ['Indeedee-F', 'Whimsicott'];
       return teamHasAny(myTeam, hhUsers);
     },
     text: "Helping Hand boosts an ally's damage by 1.5x for one turn — pushes borderline 2HKOs into OHKOs and pairs cleanly with setup moves (DD + HH the same turn = +1 attacker, +50% damage). Wasted if the ally is targeted by a Fake Out flinch the same turn — sequence HH after disruption resolves.",
@@ -339,11 +339,17 @@ export const FACTS: readonly Fact[] = [
     },
     text: "Body Press uses the user's Defense as the attack stat — pairs with Iron Defense (+2 Def per use) for a multi-turn setup that scales without an Attack stat. Common on Corviknight / Mega Aggron. Unaware (Dondozo, Clefable) ignores the Defense boost when calculating incoming Body Press damage; Haze / Clear Smog reset the stages. Special attackers bypass the Defense wall entirely.",
   },
+  // TODO(M-B rollout): replace with concrete M-B Mega rotation + ban-list
+  // facts once the official M-B bulletin ships. The current entry is a
+  // format-rotation test fixture (exercises `Fact.format` per-format
+  // subsetting) and a hedge: if the recommender runs under M-B before
+  // research is updated, the model is told to fall back to M-A defaults
+  // rather than confidently asserting an M-A meta into an M-B matchup.
   {
     key: 'regmb-restricted-mega-list-stub',
     applies: () => true,
     format: 'gen9championsvgc2026regmb',
-    text: "Regulation M-B's restricted-Mega list and species-pool changes have not been finalised. When M-B's bulletin ships, this fact will encode the M-B-specific Mega rotation (Champions-exclusive Megas added/removed) and any move/item bans diverging from M-A. Until then, treat the matchup with M-A defaults and flag any uncertainty in `confidence`.",
+    text: 'Regulation M-B research has not been ingested into this tool yet. Treat the matchup with M-A defaults, lower `confidence`, and call out that the M-B Mega rotation, species pool, and move/item bans may diverge from the M-A baseline used to ground these notes.',
   },
 ];
 
