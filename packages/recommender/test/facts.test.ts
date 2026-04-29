@@ -9,34 +9,59 @@ const REG_MA_REFERENCE = readFileSync(
   join(REPO_ROOT, 'dev', 'research', 'champions-2026-04-26.md'),
   'utf8',
 );
+const FACTS_SOURCE = readFileSync(
+  join(REPO_ROOT, 'packages', 'recommender', 'src', 'facts.ts'),
+  'utf8',
+);
 
 /**
- * Species, abilities, and moves referenced by `facts.ts` predicates and
- * text. Cross-checked against the M-A reference snapshot to catch typos
- * or facts that reference banned/unsupported species.
+ * Species referenced by `facts.ts` predicates. Cross-checked against the
+ * M-A reference snapshot to catch typos or facts that reference banned /
+ * unsupported species.
+ *
+ * Coverage policy (M6.5.1): predicates collectively reference ≥30 unique
+ * M-A-legal species — see the `references ≥30 unique species` assertion
+ * below.
  */
 const SPECIES_USED = [
+  'Aggron',
+  'Amoonguss',
   'Annihilape',
   'Arcanine',
+  'Baxcalibur',
   'Charizard',
+  'Corviknight',
+  'Dondozo',
+  'Dragonite',
+  'Excadrill',
   'Garchomp',
+  'Gholdengo',
   'Gyarados',
   'Hatterene',
+  'Hippowdon',
   'Hitmontop',
+  'Hydreigon',
   'Incineroar',
   'Indeedee-F',
   'Kangaskhan',
+  'Kommo-o',
   'Lucario',
+  'Metagross',
   'Mienshao',
   'Milotic',
   'Ninetales',
+  'Pelipper',
   'Porygon2',
+  'Rillaboom',
   'Salamence',
   'Sinistcha',
   'Sneasler',
+  'Tatsugiri',
   'Torkoal',
+  'Toxicroak',
   'Tyranitar',
   'Volcarona',
+  'Whimsicott',
 ] as const;
 
 /**
@@ -57,8 +82,31 @@ const MEGA_ITEMS_USED = [
 ] as const;
 
 describe('facts.ts — coverage and legality', () => {
-  it('ships at least 10 hand-curated facts (M6.5.0 floor)', () => {
-    expect(FACTS.length).toBeGreaterThanOrEqual(10);
+  it('ships at least 30 hand-curated facts (M6.5.1 floor)', () => {
+    // M6.5.0 floor was ≥10; M6.5.1 raises the bar to ≥30 to cover the
+    // top-played M-A staples (redirection, weather, priority blocks,
+    // item triggers, archetype recognition).
+    expect(FACTS.length).toBeGreaterThanOrEqual(30);
+  });
+
+  it('references at least 30 unique M-A-legal species across predicates', () => {
+    // M6.5.1 coverage assertion — the curated SPECIES_USED list is
+    // updated in lock-step with new facts and validated for legality
+    // below. A floor of 30 matches the design doc §"M6.5.1 — facts
+    // expansion" target.
+    expect(SPECIES_USED.length).toBeGreaterThanOrEqual(30);
+    const uniq = new Set(SPECIES_USED);
+    expect(uniq.size, 'SPECIES_USED contains duplicates').toBe(SPECIES_USED.length);
+
+    // Every entry in SPECIES_USED should appear at least once in
+    // facts.ts source — guards against the list drifting away from the
+    // facts that actually reference these species.
+    for (const species of SPECIES_USED) {
+      expect(
+        FACTS_SOURCE.includes(`'${species}'`),
+        `species ${species} not referenced in facts.ts`,
+      ).toBe(true);
+    }
   });
 
   it('every fact has a unique key', () => {
@@ -127,14 +175,62 @@ describe('selectFacts — experiment fixture', () => {
   });
 });
 
+describe('selectFacts — format-rotation subsetting (M6.5.1)', () => {
+  // The design doc §"M6.5.1 — facts expansion" calls for per-format
+  // facts subsetting: a fact tagged `format: 'gen9championsvgc2026regmb'`
+  // must not surface when querying for M-A and must surface (when its
+  // predicate fires) for M-B.
+  const M_B_ONLY_KEY = 'regmb-restricted-mega-list-stub';
+
+  it('at least one fact is M-B-restricted', () => {
+    const mbOnly = FACTS.filter((f) => f.format === 'gen9championsvgc2026regmb');
+    expect(mbOnly.length).toBeGreaterThanOrEqual(1);
+    expect(mbOnly.some((f) => f.key === M_B_ONLY_KEY)).toBe(true);
+  });
+
+  it('excludes M-B-only facts when format=gen9championsvgc2026regma', () => {
+    const bundle = experimentBundle();
+    const facts = selectFacts(bundle.myTeam, bundle.oppTeam, 'gen9championsvgc2026regma');
+    const keys = new Set(facts.map((f) => f.key));
+    expect(keys.has(M_B_ONLY_KEY)).toBe(false);
+  });
+
+  it('includes the M-B-only fact when format=gen9championsvgc2026regmb', () => {
+    // The stub fact is `applies: () => true`, so it fires for any team
+    // pairing under M-B — including the M-A experiment fixture (the
+    // teams themselves are format-agnostic data; the format flag drives
+    // which facts surface).
+    const bundle = experimentBundle();
+    const facts = selectFacts(bundle.myTeam, bundle.oppTeam, 'gen9championsvgc2026regmb');
+    const keys = new Set(facts.map((f) => f.key));
+    expect(keys.has(M_B_ONLY_KEY)).toBe(true);
+  });
+
+  it('format-agnostic facts surface under both M-A and M-B', () => {
+    // Spot check: a fact with no `format` field should appear under both
+    // formats (assuming its predicate fires). `incineroar-fake-out-
+    // parting-shot` is unconditional given Incineroar on the team.
+    const bundle = experimentBundle();
+    const factsA = selectFacts(bundle.myTeam, bundle.oppTeam, 'gen9championsvgc2026regma');
+    const factsB = selectFacts(bundle.myTeam, bundle.oppTeam, 'gen9championsvgc2026regmb');
+    const keyA = new Set(factsA.map((f) => f.key));
+    const keyB = new Set(factsB.map((f) => f.key));
+    expect(keyA.has('incineroar-fake-out-parting-shot')).toBe(true);
+    expect(keyB.has('incineroar-fake-out-parting-shot')).toBe(true);
+  });
+});
+
 /**
  * Permissive plausibility check for species names — Title Case, optional
- * `-Form` suffix (single letter or word). The reference doc doesn't
- * enumerate every legal mon by name, so we fall back to a name-shape
- * sanity check for species that weren't named in prose.
+ * `-Form` suffix (single letter, word, or lowercase letter for the
+ * Kommo-o / Jangmo-o style). The reference doc doesn't enumerate every
+ * legal mon by name, so we fall back to a name-shape sanity check for
+ * species that weren't named in prose.
  */
 function isPlausibleMonName(name: string): boolean {
-  // Title-case start, optionally followed by a single-letter or short
-  // suffix (Indeedee-F, Landorus-Therian) or a trailing digit (Porygon2).
-  return /^[A-Z][a-zA-Z]+\d?(-[A-Z][a-zA-Z]*)?$/.test(name);
+  // Title-case start, optionally followed by a digit (Porygon2) and / or
+  // a `-suffix` (Indeedee-F, Landorus-Therian, Kommo-o). The dash-suffix
+  // segment may be uppercase-or-lowercase to admit canonical names like
+  // Kommo-o whose tail is a lowercase 'o'.
+  return /^[A-Z][a-zA-Z]+\d?(-[A-Za-z][a-zA-Z]*)?$/.test(name);
 }

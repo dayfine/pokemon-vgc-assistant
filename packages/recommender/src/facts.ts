@@ -49,6 +49,14 @@ function teamHasAny(team: TeamSet, species: readonly string[]): boolean {
   return species.some((s) => set.has(s));
 }
 
+function teamHasItem(team: TeamSet, item: string): boolean {
+  return team.some((p) => p.item === item);
+}
+
+function teamHasAnyItem(team: TeamSet, items: readonly string[]): boolean {
+  return team.some((p) => typeof p.item === 'string' && items.includes(p.item));
+}
+
 /**
  * Curated v1 facts. Order is stable so prompt snapshots are deterministic.
  *
@@ -162,6 +170,180 @@ export const FACTS: readonly Fact[] = [
       return count >= 2;
     },
     text: 'Two Fake Out users on the team = consecutive turns of single-mon disruption. The second Fake Out fires turn 2 (Fake Out flag resets when a mon switches in), so the standard line is Fake Out lead → Fake Out partner switches in → second Fake Out on turn 2.',
+  },
+  // --- M6.5.1 expansion below: tactical-interaction facts spanning more
+  // M-A staples (redirection, weather, priority blocks, item triggers,
+  // archetype recognition). Every species/ability/move/item is M-A-legal
+  // per `dev/research/champions-2026-04-26.md` (Legendaries / Paradox /
+  // Treasures of Ruin / sleep-inducing moves all banned, so none appear
+  // below).
+  {
+    key: 'rillaboom-grassy-surge-team-impact',
+    applies: (myTeam, oppTeam) => teamHas(myTeam, 'Rillaboom') || teamHas(oppTeam, 'Rillaboom'),
+    text: "Rillaboom's Grassy Surge sets Grassy Terrain — grounded mons recover 1/16 HP/turn, Grass-move power +30%, and Earthquake / Magnitude / Bulldoze damage halved. Grassy Glide gains +1 priority on Rillaboom, beating most non-priority spread answers. Track who is grounded (Levitate / Flying-types ignore the recovery) when planning EQ-based offence.",
+  },
+  {
+    key: 'amoonguss-redirection-anti-goggles',
+    applies: (_myTeam, oppTeam) => teamHas(oppTeam, 'Amoonguss'),
+    text: 'Opp Amoonguss redirects single-target moves with Rage Powder and trades chip via Pollen Puff (heals ally) / Clear Smog (resets stat boosts). Rage Powder fails against Grass-types, Overcoat holders, and Safety Goggles users — bringing one of those bypasses the redirection layer entirely.',
+  },
+  {
+    key: 'whimsicott-prankster-tailwind',
+    applies: (myTeam) => teamHas(myTeam, 'Whimsicott'),
+    text: "Whimsicott's Prankster gives status moves +1 priority — Tailwind lands turn 1 (4 turns of doubled Speed for the team), Encore locks an opp into their last move for 3 turns, Beat Up triggers Justified ally boosts. Prankster status moves fail against Dark-types, so check the opp board for a Dark before relying on Prankster Encore.",
+  },
+  {
+    key: 'pelipper-drizzle-rain-stack',
+    applies: (myTeam, oppTeam) => teamHas(myTeam, 'Pelipper') || teamHas(oppTeam, 'Pelipper'),
+    text: "Pelipper's Drizzle sets rain on switch-in — Water moves +50% / Fire moves -50%, Hurricane becomes 100% accurate, Thunder becomes 100% accurate, Swift Swim sweepers (Kingdra, Barraskewda, Mega Feraligatr) double their Speed. The rain stack's win condition is one Pelipper turn followed by a fast Water-spam partner; cutting the rain (Tyranitar Sand Stream, Torkoal Drought) flips the matchup.",
+  },
+  {
+    key: 'gholdengo-good-as-gold-blocks-status',
+    applies: (_myTeam, oppTeam) => teamHas(oppTeam, 'Gholdengo'),
+    text: "Opp Gholdengo's Good as Gold blocks every status move targeting it — Will-O-Wisp, Thunder Wave, Encore, Taunt, Trick, Helping Hand (when targeted), Follow Me redirection past it. Bring damaging answers, not status; Steel/Ghost typing is also Knock Off / Toxic / Rage Powder immune.",
+  },
+  {
+    key: 'dragonite-multiscale-priority',
+    applies: (myTeam, oppTeam) => teamHas(myTeam, 'Dragonite') || teamHas(oppTeam, 'Dragonite'),
+    text: "Dragonite's Multiscale halves damage taken when at full HP, so the standard play is to chip Dragonite first (Fake Out, Sand Stream residual, an off-target spread move) before committing the KO attempt. Extreme Speed is +2 priority; Dragonite revenge-kills weakened sweepers regardless of speed control.",
+  },
+  {
+    key: 'salamence-aerilate-hyper-voice',
+    applies: (myTeam, oppTeam) => {
+      const sideHasMega = (team: TeamSet) =>
+        team.some((p) => p.name === 'Salamence' && p.item === 'Salamencite');
+      return sideHasMega(myTeam) || sideHasMega(oppTeam);
+    },
+    text: "Mega Salamence's Aerilate converts Normal moves to Flying with a 1.2x boost — Hyper Voice becomes a spread Flying STAB hitting both opp slots, Double-Edge / Return become single-target Flying nukes. Wide Guard blocks the Hyper Voice line; Steel-types resist and Rock-types take neutral damage.",
+  },
+  {
+    key: 'metagross-tough-claws-bullet-punch',
+    applies: (myTeam, oppTeam) => {
+      const sideHasMega = (team: TeamSet) =>
+        team.some((p) => p.name === 'Metagross' && p.item === 'Metagrossite');
+      return sideHasMega(myTeam) || sideHasMega(oppTeam);
+    },
+    text: "Mega Metagross's Tough Claws boosts contact moves +30% — Iron Head, Meteor Mash, Zen Headbutt, and Bullet Punch all crit-trade hard. Bullet Punch is +1 priority Steel STAB and revenge-KOs frail sweepers (Volcarona, Whimsicott, Sneasler). Pre-Mega Clear Body blocks Intimidate.",
+  },
+  {
+    key: 'baxcalibur-glaive-rush-trap',
+    applies: (myTeam, oppTeam) => teamHas(myTeam, 'Baxcalibur') || teamHas(oppTeam, 'Baxcalibur'),
+    text: "Baxcalibur's Glaive Rush flags the user — incoming attacks deal double damage and never miss until Baxcalibur's next turn. Pairing Glaive Rush with a Protect partner mitigates the swap-in risk; using Glaive Rush into a Sucker Punch / Bullet Punch user usually trades poorly for Baxcalibur.",
+  },
+  {
+    key: 'hydreigon-levitate-eq-spam',
+    applies: (myTeam) =>
+      teamHas(myTeam, 'Hydreigon') &&
+      teamHasAny(myTeam, ['Garchomp', 'Tyranitar', 'Hippowdon', 'Excadrill']),
+    text: "Hydreigon's Levitate makes it Earthquake-immune — pair with a Ground-type partner to spam EQ without friendly fire. Dark/Dragon STAB hits Indeedee-F and Sinistcha super-effectively; Hydreigon also resists Heat Wave / Fiery Dance, easing the Volcarona / Charizard-Y matchup.",
+  },
+  {
+    key: 'dondozo-tatsugiri-commander',
+    applies: (myTeam, oppTeam) => {
+      const hasPair = (team: TeamSet) => teamHas(team, 'Dondozo') && teamHas(team, 'Tatsugiri');
+      return hasPair(myTeam) || hasPair(oppTeam);
+    },
+    text: "Tatsugiri triggers its Commander ability when sent in beside Dondozo — it enters Dondozo's mouth, becomes untargetable, and grants Dondozo +2 to every stat (Atk, Def, SpA, SpD, Spe). Dondozo can't switch out while Commander is active. The KO answer is to remove Dondozo with super-effective spam (Grass / Electric / Fairy moves) before the boost compounds via Order Up.",
+  },
+  {
+    key: 'choice-locked-knock-off-trade',
+    applies: (_myTeam, oppTeam) =>
+      teamHasAnyItem(oppTeam, ['Choice Band', 'Choice Specs', 'Choice Scarf']),
+    text: 'Knocking off a Choice item removes the item but does NOT free the opp from the move-lock for the current switch-in window — the lock persists until the holder switches out. Trade Knock Off only when the item itself is the threat (Scarf-locked sweeper) or when the opp would re-equip via switch.',
+  },
+  {
+    key: 'safety-goggles-vs-redirection',
+    applies: (myTeam) => teamHasItem(myTeam, 'Safety Goggles'),
+    text: 'Safety Goggles ignore Rage Powder / Spore (also blocks weather chip — sand, hail). A Goggles holder bypasses Sinistcha / Amoonguss / Smeargle redirection, letting attacks land on the intended target. Particularly load-bearing on a setup sweeper that needs to KO the redirector itself.',
+  },
+  {
+    key: 'covert-cloak-blocks-flinch',
+    applies: (myTeam) => teamHasItem(myTeam, 'Covert Cloak'),
+    text: 'Covert Cloak blocks added effects — Fake Out flinch, Air Slash flinch, Rock Slide flinch, Iron Head flinch, Scald burn, Icy Wind speed drop. Functionally trades a Sitrus / Lefties slot for hard immunity to flinch-based disruption, valuable on a slow setup mon (Sinistcha, Porygon2) that hates losing the turn.',
+  },
+  {
+    key: 'eject-pack-tempo-pivot',
+    applies: (myTeam) => teamHasItem(myTeam, 'Eject Pack'),
+    text: "Eject Pack triggers when the holder's stat is lowered, force-switching them out and bringing in a chosen replacement. Common pivot: lead an Intimidate target with Eject Pack, eat the -1 Attack, swap into the actual win condition for free.",
+  },
+  {
+    key: 'focus-sash-vs-chip',
+    applies: (myTeam, oppTeam) =>
+      teamHasItem(myTeam, 'Focus Sash') || teamHasItem(oppTeam, 'Focus Sash'),
+    text: 'Focus Sash survives one OHKO at full HP, then breaks. Any chip (Fake Out, Sand Stream, Spikes, ally spread move) consumed before the lethal hit nullifies it. When opp leads a Sash holder, T1 Fake Out into a Sand Stream / spread move usually trades the Sash for free.',
+  },
+  {
+    key: 'encore-lock-on-setup',
+    applies: (myTeam, oppTeam) => teamHas(myTeam, 'Whimsicott') || teamHas(oppTeam, 'Whimsicott'),
+    text: 'Encore locks the target into its last move for 3 turns. Standard Whimsicott Prankster line: opp uses Dragon Dance / Quiver Dance / Trick Room / Tailwind, Whimsicott Encores it, opp burns the next two turns repeating a now-pointless setup move. Fails vs. Dark-types (Prankster immune).',
+  },
+  {
+    key: 'taunt-shutdown-support',
+    applies: (myTeam, oppTeam) => {
+      const hasTaunt = (team: TeamSet) =>
+        team.some((p) => (p.moves ?? []).some((m) => String(m) === 'Taunt'));
+      return hasTaunt(myTeam) || hasTaunt(oppTeam);
+    },
+    text: "Taunt blocks all status moves on the target for 3 turns — counters Indeedee-F Follow Me, Sinistcha Rage Powder, Trick Room setters, screen setters (Light Screen / Reflect), Whimsicott Tailwind. Doesn't stop damaging moves, so the Taunted mon can still attack normally.",
+  },
+  {
+    key: 'wide-guard-spread-block',
+    applies: (myTeam, oppTeam) => {
+      const wideGuardUsers = ['Hitmontop', 'Mienshao', 'Kommo-o', 'Toxicroak'];
+      return teamHasAny(myTeam, wideGuardUsers) || teamHasAny(oppTeam, wideGuardUsers);
+    },
+    text: 'Wide Guard blocks every multi-target move for one turn — Heat Wave, Rock Slide, Earthquake, Hyper Voice, Discharge. Single-target moves still land. Standard answer to spread-spam leads (Mega Salamence Hyper Voice, Charizard-Y Heat Wave); pairs naturally with a slower setup mon.',
+  },
+  {
+    key: 'quick-guard-priority-block',
+    applies: (myTeam, oppTeam) => {
+      const quickGuardUsers = ['Hitmontop', 'Mienshao', 'Kommo-o'];
+      return teamHasAny(myTeam, quickGuardUsers) || teamHasAny(oppTeam, quickGuardUsers);
+    },
+    text: 'Quick Guard blocks every priority move (positive priority) for one turn — Fake Out, Extreme Speed, Bullet Punch, Sucker Punch, Grassy Glide on Rillaboom. Useful when the opp lead pair is priority-heavy and the win condition is a setup mon that hates Fake Out.',
+  },
+  {
+    key: 'helping-hand-damage-chain',
+    applies: (myTeam) => {
+      const hhUsers = ['Indeedee-F', 'Sinistcha', 'Whimsicott', 'Sneasler'];
+      return teamHasAny(myTeam, hhUsers);
+    },
+    text: "Helping Hand boosts an ally's damage by 1.5x for one turn — pushes borderline 2HKOs into OHKOs and pairs cleanly with setup moves (DD + HH the same turn = +1 attacker, +50% damage). Wasted if the ally is targeted by a Fake Out flinch the same turn — sequence HH after disruption resolves.",
+  },
+  {
+    key: 'tailwind-window-management',
+    applies: (myTeam, oppTeam) => {
+      const twUsers = ['Whimsicott', 'Pelipper', 'Salamence'];
+      return teamHasAny(myTeam, twUsers) || teamHasAny(oppTeam, twUsers);
+    },
+    text: "Tailwind doubles team Speed for 4 turns from the setter's turn (so 4 turns of speed under Whimsicott Prankster, 3 turns under non-Prankster setters). Plan setup → sweep within the window; Tailwind ends T+4 and the trailing turn often flips speed back to opp. Trick Room overwrites Tailwind for that side's mons (TR speed-tier inversion supersedes the boost).",
+  },
+  {
+    key: 'sun-chlorophyll-team-impact',
+    applies: (myTeam, oppTeam) => {
+      const sunSetters = ['Torkoal', 'Ninetales'];
+      return teamHasAny(myTeam, sunSetters) || teamHasAny(oppTeam, sunSetters);
+    },
+    text: "Drought (Torkoal / Ninetales) sets sun on switch-in — Fire moves +50% / Water moves -50%, Solar Beam skips charge, Chlorophyll mons (Venusaur, Lilligant) double Speed. Sun-team win condition is a Chlorophyll sweeper or Volcarona Quiver Dance behind sun's Fire boost; Tyranitar Sand Stream cuts sun on switch-in.",
+  },
+  {
+    key: 'aurora-veil-snow-screens',
+    applies: (myTeam, oppTeam) => teamHas(myTeam, 'Ninetales') || teamHas(oppTeam, 'Ninetales'),
+    text: 'Alolan Ninetales (Snow Warning) sets snow and unlocks Aurora Veil — combined Reflect + Light Screen for 5 turns, scaling to 8 with Light Clay. Aurora Veil only sets while snow is active; cutting snow (Drizzle / Drought / Sand Stream override) drops the screen-setup window.',
+  },
+  {
+    key: 'iron-defense-body-press-setup',
+    applies: (myTeam, oppTeam) => {
+      const bpUsers = ['Corviknight', 'Aggron'];
+      return teamHasAny(myTeam, bpUsers) || teamHasAny(oppTeam, bpUsers);
+    },
+    text: "Body Press uses the user's Defense as the attack stat — pairs with Iron Defense (+2 Def per use) for a multi-turn setup that scales without an Attack stat. Common on Corviknight / Mega Aggron. Unaware (Dondozo, Clefable) ignores the Defense boost when calculating incoming Body Press damage; Haze / Clear Smog reset the stages. Special attackers bypass the Defense wall entirely.",
+  },
+  {
+    key: 'regmb-restricted-mega-list-stub',
+    applies: () => true,
+    format: 'gen9championsvgc2026regmb',
+    text: "Regulation M-B's restricted-Mega list and species-pool changes have not been finalised. When M-B's bulletin ships, this fact will encode the M-B-specific Mega rotation (Champions-exclusive Megas added/removed) and any move/item bans diverging from M-A. Until then, treat the matchup with M-A defaults and flag any uncertainty in `confidence`.",
   },
 ];
 

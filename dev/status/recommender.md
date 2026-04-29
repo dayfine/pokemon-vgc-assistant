@@ -6,7 +6,7 @@
 READY_FOR_REVIEW
 
 ## Current milestone
-M6.5.0 — recommender package, simple slice
+M6.5.2 — series-level notes integration (M7 hook)
 
 ## Completed
 - **M6.5.0 simple slice** (PR #23) — scaffolded
@@ -22,6 +22,25 @@ M6.5.0 — recommender package, simple slice
   `RUN_LIVE_TESTS=1`. Anthropic SDK (`^0.65.0`) added as the only new
   runtime dep; `process.env` access scoped to `client.ts`; format ID
   literal scoped to `prompt.ts` `FORMAT_RULES` map.
+- **M6.5.1 facts expansion** (PR #TBD) — `facts.ts` grew from 12 to
+  38 hand-curated facts and from ~21 to 38 unique M-A-legal species
+  referenced across predicates. New coverage spans redirection
+  (Amoonguss, Whimsicott Prankster, Gholdengo Good as Gold), weather
+  (Pelipper Drizzle, Torkoal/Ninetales Drought, Alolan Ninetales
+  Aurora Veil), priority blocks (Wide Guard, Quick Guard), item
+  triggers (Safety Goggles, Covert Cloak, Eject Pack, Focus Sash,
+  Choice-locked Knock Off trade), pseudo-legendary kits (Dragonite
+  Multiscale, Salamence Aerilate, Metagross Tough Claws, Baxcalibur
+  Glaive Rush, Hydreigon Levitate), and archetype recognition
+  (Tatsugiri / Dondozo Commander, Body Press / Iron Defense, sun /
+  Chlorophyll, Tailwind window). Format-rotation handling exercised
+  via a `gen9championsvgc2026regmb`-restricted stub fact
+  (`regmb-restricted-mega-list-stub`); test asserts it filters out
+  under M-A and surfaces under M-B. Coverage assertions added to
+  `facts.test.ts`: `FACTS.length >= 30`, `SPECIES_USED.length >= 30`
+  with cross-check that every entry appears in facts source. Every
+  new species/ability/item cross-checked against
+  `champions-2026-04-26.md` for M-A legality.
 
 ## In Progress
 (none)
@@ -30,9 +49,6 @@ M6.5.0 — recommender package, simple slice
 (none)
 
 ## Follow-up
-- **M6.5.1 facts expansion** — broaden `facts.ts` to ≥30 M-A species'
-  ability/move tactical interactions; add format-rotation handling
-  (per-format facts subsetting).
 - **M6.5.2 series-level notes (M7 hook)** — wire the
   `notes?: readonly string[]` parameter into the prompt's
   "Series-level facts revealed so far" section. The notes UI itself
