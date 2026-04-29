@@ -22,6 +22,31 @@ import type { Format, TeamSet } from '@pva/engine';
  * Predicates referencing banned mons are dead branches; vision validates
  * legality upstream so they can never fire on real input.
  */
+/**
+ * Machine-checkable assertion riding alongside a fact. The M6.5.3 facts
+ * data gate iterates `claims` × the vendored Showdown-Champions snapshot
+ * to verify every species/move/ability/item reference matches authority.
+ *
+ * Predicates stay in `applies` closures (flexibility for non-list
+ * triggers like team-comp gates `Tatsugiri + Dondozo`); claims are pure
+ * data, validated separately. A fact may carry zero or more claims —
+ * pure-prose facts with no machine-checkable assertions omit the field.
+ *
+ * Display-name conventions match the rest of the recommender (`'Indeedee-F'`,
+ * `'Helping Hand'`, `'Salamencite'`); the gate canonicalizes via
+ * Showdown's `toID` at check time.
+ */
+export interface FactClaim {
+  /** Species the claim is about. Each must individually satisfy the move/ability/item check. */
+  readonly species: readonly string[];
+  /** Move the species must learn under gen-9 rules. */
+  readonly move?: string;
+  /** Ability the species must have in some slot (0/1/H/S). */
+  readonly ability?: string;
+  /** Item that must exist in the items table; if a Mega Stone, must Mega-evolve one of `species`. */
+  readonly item?: string;
+}
+
 export interface Fact {
   readonly key: string;
   /** Pure predicate — only reads species names; no I/O. */
@@ -30,6 +55,12 @@ export interface Fact {
   readonly text: string;
   /** Restrict to a specific format if the fact is meta-dependent. */
   readonly format?: Format;
+  /**
+   * Machine-checkable assertions. Verified at CI by the M6.5.3 facts
+   * data gate. Fact migration to populate `claims` lands in a follow-up
+   * PR; this field is optional during the rollout.
+   */
+  readonly claims?: readonly FactClaim[];
 }
 
 /**
