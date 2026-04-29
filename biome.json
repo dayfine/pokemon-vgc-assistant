@@ -6,7 +6,13 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignore": ["**/dist/**", "**/build/**", "**/node_modules/**", "**/coverage/**"]
+    "ignore": [
+      "**/dist/**",
+      "**/build/**",
+      "**/node_modules/**",
+      "**/coverage/**",
+      "data/showdown-snapshot/**"
+    ]
   },
   "formatter": {
     "enabled": true,

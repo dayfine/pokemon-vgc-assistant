@@ -264,13 +264,17 @@ deterministic: every machine-checkable claim in `facts.ts` must
 gate against a vendored Showdown-Champions data snapshot at CI
 time.
 
-**Source of truth.** `smogon/pokemon-showdown` mod
-`data/mods/gen9champions/`, merged with the base gen-9 data the
-mod inherits from. Per `qc-behavioral-authority.md`: "Anything
-contradicting Showdown is wrong." We target the Champions mod
-specifically — vanilla gen-9 lookup misses Champions-exclusive
-Megas (Mega Greninja / Mega Meganium / Mega Feraligatr) and any
-mod-overridden learnset entries.
+**Source of truth.** `smogon/pokemon-showdown` mod at upstream
+`data/mods/champions/`, merged with the base gen-9 data the mod
+inherits from. Locally vendored as `gen9champions/` to match the
+mod-ID naming used in format strings (`gen9championsvgc2026regma`)
+— Showdown generates the `gen9` prefix from the mod's manifest;
+the on-disk directory is `champions/`. Per
+`qc-behavioral-authority.md`: "Anything contradicting Showdown is
+wrong." We target the Champions mod specifically — vanilla gen-9
+lookup misses Champions-exclusive Megas (Mega Greninja / Mega
+Meganium / Mega Feraligatr) and any mod-overridden learnset
+entries.
 
 **Snapshot vendoring.** Don't depend on a live Showdown checkout
 in CI. Vendor a pinned subset at `data/showdown-snapshot/` with a
@@ -282,12 +286,17 @@ data/showdown-snapshot/
   base/
     learnsets.ts                 # base gen-9 learnsets
     pokedex.ts                   # base gen-9 pokedex (abilities, types)
+    items.ts                     # base gen-9 items
+    formats-data.ts              # base tier flags
   gen9champions/
-    learnsets.ts                 # mod overlay (deltas only)
-    pokedex.ts                   # mod overlay (deltas only)
+    learnsets.ts                 # mod overlay (full replacements)
     items.ts                     # mod overlay (Champions-exclusive items)
     formats-data.ts              # tier flags (banned-in-M-A markers)
+    moves.ts                     # mod overlay (move additions / overrides)
 ```
+
+No mod-overlay `pokedex.ts` — Champions inherits the base pokedex
+unmodified.
 
 A refresh script `scripts/refresh-showdown-snapshot.sh` clones
 upstream at a config-pinned commit, copies the four-or-five files,
