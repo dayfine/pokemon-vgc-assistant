@@ -3,10 +3,10 @@
 ## Last updated: 2026-04-29
 
 ## Status
-READY_FOR_REVIEW (rework applied, awaiting re-QC)
+READY_FOR_REVIEW (B-LRN-2 + B-LRN-3 rework applied, awaiting re-QC)
 
 structural_qc: APPROVED 2026-04-29
-behavioral_qc: NEEDS_REWORK 2026-04-29 — rework pushed (Sneasler/Sinistcha removed from `helping-hand-damage-chain`; Spore/Smeargle stripped from `safety-goggles-vs-redirection`; M-B stub TODO + non-self-referential prose). Re-run behavioral QC against new tip SHA. See `dev/reviews/m6.5.1-facts-expansion.md` for original findings.
+behavioral_qc: NEEDS_REWORK 2026-04-29 (re-review @ `aec49e3`) — rework pushed: Kommo-o + Toxicroak removed from `wide-guard-spread-block`; Kommo-o removed from `quick-guard-priority-block`; both species also dropped from `SPECIES_USED` cross-check list. `wideGuardUsers` and `quickGuardUsers` now `['Hitmontop', 'Mienshao']`. Re-run behavioral QC against new tip. Original B-LRN, B-LEG-S1, B-STUB findings remain FIXED. See `dev/reviews/m6.5.1-facts-expansion.md` "Behavioral QC — re-review" section for details.
 
 ## Current milestone
 M6.5.2 — series-level notes integration (M7 hook)

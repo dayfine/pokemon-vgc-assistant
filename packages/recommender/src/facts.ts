@@ -289,7 +289,7 @@ export const FACTS: readonly Fact[] = [
   {
     key: 'wide-guard-spread-block',
     applies: (myTeam, oppTeam) => {
-      const wideGuardUsers = ['Hitmontop', 'Mienshao', 'Kommo-o', 'Toxicroak'];
+      const wideGuardUsers = ['Hitmontop', 'Mienshao'];
       return teamHasAny(myTeam, wideGuardUsers) || teamHasAny(oppTeam, wideGuardUsers);
     },
     text: 'Wide Guard blocks every multi-target move for one turn — Heat Wave, Rock Slide, Earthquake, Hyper Voice, Discharge. Single-target moves still land. Standard answer to spread-spam leads (Mega Salamence Hyper Voice, Charizard-Y Heat Wave); pairs naturally with a slower setup mon.',
@@ -297,7 +297,7 @@ export const FACTS: readonly Fact[] = [
   {
     key: 'quick-guard-priority-block',
     applies: (myTeam, oppTeam) => {
-      const quickGuardUsers = ['Hitmontop', 'Mienshao', 'Kommo-o'];
+      const quickGuardUsers = ['Hitmontop', 'Mienshao'];
       return teamHasAny(myTeam, quickGuardUsers) || teamHasAny(oppTeam, quickGuardUsers);
     },
     text: 'Quick Guard blocks every priority move (positive priority) for one turn — Fake Out, Extreme Speed, Bullet Punch, Sucker Punch, Grassy Glide on Rillaboom. Useful when the opp lead pair is priority-heavy and the win condition is a setup mon that hates Fake Out.',
