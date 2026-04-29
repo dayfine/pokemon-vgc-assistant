@@ -67,6 +67,15 @@ const FORMAT_RULES: Record<Format, string> = {
     '- Stat Points (SP) replace EVs as the customization knob (different math from EVs).',
     '- 45s/turn timer, 7min per-player time, 20min overall (matches end in draw on overall expiry).',
   ].join('\n'),
+  // Stub: M-B's official rules have not shipped. The placeholder text lets
+  // the type stay exhaustive and the prompt builder stay total without
+  // introducing a runtime branch. Replace when Reg M-B's regulation
+  // bulletin is published.
+  gen9championsvgc2026regmb: [
+    'Format: Pokémon Champions, VGC 2026, Regulation M-B (stub).',
+    '- Reg M-B regulation details have not been finalised; treat the rules as TBD.',
+    '- Use M-A defaults (4v4 Doubles, Mega only, no Tera/Dynamax/Z-Moves) until the bulletin ships.',
+  ].join('\n'),
 };
 
 function formatSection(format: Format, sheetMode: SheetMode): string {

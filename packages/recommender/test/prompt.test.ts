@@ -123,4 +123,20 @@ describe('buildPrompt — Tabuyo Charizard X experiment fixture', () => {
     expect(prompt).toContain('## Series-level facts revealed so far');
     expect(prompt).toContain('Volcarona had Quiver Dance');
   });
+
+  it('renders the M-B stub format rules when format=gen9championsvgc2026regmb', () => {
+    const bundle = experimentBundle();
+    const prompt = buildPrompt({
+      format: 'gen9championsvgc2026regmb',
+      sheetMode: 'open',
+      myTeam: bundle.myTeam,
+      oppTeam: bundle.oppTeam,
+      matrix: bundle.matchupMatrix,
+      speedRanking: bundle.speed,
+      scoreBaseline: bundle.baseline,
+    });
+    // Stub-specific marker — picks up that the M-B branch was hit, not M-A.
+    expect(prompt).toContain('Regulation M-B (stub)');
+    expect(prompt).not.toContain('Regulation M-A.');
+  });
 });
