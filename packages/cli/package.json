@@ -22,6 +22,7 @@
   "dependencies": {
     "@pkmn/sets": "^5.2.0",
     "@pva/engine": "workspace:*",
+    "@pva/priors": "workspace:*",
     "@pva/recommender": "workspace:*",
     "@pva/showdown-data": "workspace:*",
     "@pva/vision": "workspace:*"

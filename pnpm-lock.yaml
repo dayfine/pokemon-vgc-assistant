@@ -23,6 +23,9 @@ importers:
       '@pva/engine':
         specifier: workspace:*
         version: link:../engine
+      '@pva/priors':
+        specifier: workspace:*
+        version: link:../priors
       '@pva/recommender':
         specifier: workspace:*
         version: link:../recommender

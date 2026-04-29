@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { PikalyticsSpeciesData } from '@pva/priors';
 import type { VisionImage } from '@pva/vision';
 import { describe, expect, it } from 'vitest';
-import { OppKitMissingError, orchestrate, parseTeam } from '../src/index.js';
+import { type PriorsClient, orchestrate, parseTeam } from '../src/index.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TEAM_TXT = readFileSync(join(HERE, 'fixtures', 'charx-experiment.txt'), 'utf8');
@@ -146,23 +147,110 @@ describe('orchestrate — open-sheet end-to-end', () => {
   });
 });
 
-describe('orchestrate — closed-sheet not yet supported', () => {
-  it('rejects closed-sheet input with a clear error pointing at M6.0b', async () => {
+/**
+ * Synthetic per-species priors data. Real Pikalytics fixtures live in
+ * `packages/priors/test/fixtures/pikalytics/` — for orchestrator
+ * smoke-tests we hand-build minimal valid shapes per species so the
+ * orchestrator unit test stays offline and doesn't pull priors fixtures
+ * cross-package.
+ */
+function stubSpeciesData(species: string): PikalyticsSpeciesData {
+  // Each opp gets a single dominant item + ability + four moves at
+  // realistic-looking percentages. Item percent must be ≥ priors'
+  // 5% inclusion floor for `expand` to keep the candidate.
+  const base: Record<string, { item: string; ability: string; moves: readonly string[] }> = {
+    Volcarona: {
+      item: 'Power Herb',
+      ability: 'Flame Body',
+      moves: ['Quiver Dance', 'Heat Wave', 'Bug Buzz', 'Protect'],
+    },
+    Garchomp: {
+      item: 'Life Orb',
+      ability: 'Rough Skin',
+      moves: ['Earthquake', 'Dragon Claw', 'Stone Edge', 'Protect'],
+    },
+    'Indeedee-F': {
+      item: 'Psychic Seed',
+      ability: 'Psychic Surge',
+      moves: ['Follow Me', 'Expanding Force', 'Dazzling Gleam', 'Helping Hand'],
+    },
+    Salamence: {
+      item: 'Salamencite',
+      ability: 'Intimidate',
+      moves: ['Hyper Voice', 'Dragon Claw', 'Earthquake', 'Protect'],
+    },
+    Hatterene: {
+      item: 'Mental Herb',
+      ability: 'Magic Bounce',
+      moves: ['Trick Room', 'Dazzling Gleam', 'Psyshock', 'Protect'],
+    },
+    Annihilape: {
+      item: 'Choice Scarf',
+      ability: 'Defiant',
+      moves: ['Rage Fist', 'Close Combat', 'Final Gambit', 'U-turn'],
+    },
+  };
+  const kit = base[species];
+  if (kit === undefined) {
+    throw new Error(`No stub priors data for ${species}`);
+  }
+  return {
+    species,
+    format: 'gen9championsvgc2026regma',
+    dataDate: '2026-04-01',
+    items: [{ name: kit.item, percent: 80 }],
+    abilities: [{ name: kit.ability, percent: 95 }],
+    moves: kit.moves.map((m) => ({ name: m, percent: 80 })),
+  };
+}
+
+const stubPriorsClient: PriorsClient = {
+  async fetchSpecies(species) {
+    return stubSpeciesData(species);
+  },
+};
+
+describe('orchestrate — closed-sheet end-to-end', () => {
+  const CLOSED_VISION_RESPONSE = JSON.stringify({
+    sheetMode: 'closed',
+    myTeam: [],
+    oppTeam: [
+      { species: 'Volcarona' },
+      { species: 'Indeedee-F' },
+      { species: 'Garchomp' },
+      { species: 'Salamence' },
+      { species: 'Hatterene' },
+      { species: 'Annihilape' },
+    ],
+    confidence: 'high',
+  });
+
+  it('runs the closed-sheet pipeline through priors expansion', async () => {
     const myTeam = parseTeam(TEAM_TXT).teamSet;
-    const closedResp = JSON.stringify({
+    const result = await orchestrate({
+      myTeam,
+      oppImage: STUB_IMAGE,
+      format: 'gen9championsvgc2026regma',
       sheetMode: 'closed',
-      myTeam: [],
-      oppTeam: [{ species: 'Volcarona' }],
-      confidence: 'high',
+      mockVisionResponse: CLOSED_VISION_RESPONSE,
+      mockRecommenderResponse: RECOMMENDER_RESPONSE,
+      priorsClient: stubPriorsClient,
     });
-    await expect(
-      orchestrate({
-        myTeam,
-        oppImage: STUB_IMAGE,
-        format: 'gen9championsvgc2026regma',
-        sheetMode: 'closed',
-        mockVisionResponse: closedResp,
-      }),
-    ).rejects.toBeInstanceOf(OppKitMissingError);
+    expect(result.recommendation.bring).toHaveLength(4);
+    expect(result.oppTeam).toHaveLength(6);
+    // Each opp slot's representative comes from priors expansion —
+    // not from the vision response (which only carries species).
+    const oppNames = result.oppTeam.map((p) => p.name);
+    expect(oppNames).toEqual([
+      'Volcarona',
+      'Indeedee-F',
+      'Garchomp',
+      'Salamence',
+      'Hatterene',
+      'Annihilape',
+    ]);
+    expect(result.matchupMatrix.my.cells.length).toBe(6);
+    expect(result.matchupMatrix.opp.cells.length).toBe(6);
+    expect(result.speedRanking.entries.length).toBe(12);
   });
 });
