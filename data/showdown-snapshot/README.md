@@ -16,12 +16,17 @@ data/showdown-snapshot/
     pokedex.ts                # species data: abilities, types, baseStats
     items.ts                  # all gen-9 items
     formats-data.ts           # tier flags
-  champions/                  # `data/mods/champions/` overlay
+  gen9champions/              # `data/mods/champions/` overlay
     learnsets.ts              # mod additions / overrides
     items.ts                  # Champions-exclusive items (Mega Stones)
     formats-data.ts           # M-A tier markers
     moves.ts                  # mod move additions
 ```
+
+The local directory name (`gen9champions`) matches the mod-ID
+naming used in format strings (`gen9championsvgc2026regma`); the
+on-disk upstream directory is just `champions/` — Showdown
+generates the `gen9` prefix from the mod's manifest.
 
 No mod-overlay `pokedex.ts` — Champions inherits the base pokedex
 unmodified. New Mega forms are pulled in via the existing base

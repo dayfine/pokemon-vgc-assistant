@@ -25,13 +25,16 @@ git -C "$WORK/showdown" checkout --quiet "$SHA"
 RESOLVED_SHA="$(git -C "$WORK/showdown" rev-parse HEAD)"
 echo "==> Resolved to $RESOLVED_SHA"
 
-# Files we vendor. Mod is at data/mods/champions/ (not gen9champions/);
-# Champions inherits the base pokedex.ts unchanged so we don't vendor a
-# mod-overlay pokedex.
+# Files we vendor. Mod is at upstream `data/mods/champions/`; we land it
+# locally at `data/showdown-snapshot/gen9champions/` to match the mod-ID
+# naming used in format strings (`gen9championsvgc2026regma`) — Showdown
+# generates the `gen9` prefix from the mod's manifest, the on-disk dir
+# is just `champions/`. Champions inherits the base pokedex.ts unchanged
+# so we don't vendor a mod-overlay pokedex.
 BASE_FILES=(learnsets.ts pokedex.ts items.ts formats-data.ts)
 MOD_FILES=(learnsets.ts items.ts formats-data.ts moves.ts)
 
-mkdir -p "$SNAPSHOT_DIR/base" "$SNAPSHOT_DIR/champions"
+mkdir -p "$SNAPSHOT_DIR/base" "$SNAPSHOT_DIR/gen9champions"
 
 # Strip the `: import('...').FooDataTable` type annotations so the file
 # is standalone-loadable. We don't ship the Showdown sim package, so
@@ -51,8 +54,8 @@ for f in "${BASE_FILES[@]}"; do
 done
 
 for f in "${MOD_FILES[@]}"; do
-  strip_types "$WORK/showdown/data/mods/champions/$f" "$SNAPSHOT_DIR/champions/$f"
-  echo "==> champions/$f"
+  strip_types "$WORK/showdown/data/mods/champions/$f" "$SNAPSHOT_DIR/gen9champions/$f"
+  echo "==> gen9champions/$f"
 done
 
 printf '%s\n' "$RESOLVED_SHA" > "$PIN_FILE"

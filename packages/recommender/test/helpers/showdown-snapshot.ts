@@ -8,12 +8,12 @@
  *
  * - **Learnsets**: the Champions mod fully replaces a species' learnset
  *   when present; otherwise base gen-9 applies. (Verified empirically:
- *   `champions/learnsets.ts` carries no `inherit: true` flags as of the
+ *   `gen9champions/learnsets.ts` carries no `inherit: true` flags as of the
  *   pinned SHA — every species in the mod overlay defines its full
  *   move pool.)
  * - **Items**: mod entries with `inherit: true` defer to base for any
  *   field not explicitly overridden. Items present only in the mod
- *   (Champions-exclusive Mega Stones) live in `champions/items.ts`.
+ *   (Champions-exclusive Mega Stones) live in `gen9champions/items.ts`.
  * - **Pokedex**: no mod overlay — Champions inherits the base pokedex
  *   unmodified.
  *
@@ -26,8 +26,8 @@
 import { Items as BaseItemsRaw } from '../../../../data/showdown-snapshot/base/items';
 import { Learnsets as BaseLearnsetsRaw } from '../../../../data/showdown-snapshot/base/learnsets';
 import { Pokedex as BasePokedexRaw } from '../../../../data/showdown-snapshot/base/pokedex';
-import { Items as ModItemsRaw } from '../../../../data/showdown-snapshot/champions/items';
-import { Learnsets as ModLearnsetsRaw } from '../../../../data/showdown-snapshot/champions/learnsets';
+import { Items as ModItemsRaw } from '../../../../data/showdown-snapshot/gen9champions/items';
+import { Learnsets as ModLearnsetsRaw } from '../../../../data/showdown-snapshot/gen9champions/learnsets';
 
 interface LearnsetEntry {
   readonly learnset?: { readonly [moveId: string]: readonly string[] | undefined };
