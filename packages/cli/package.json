@@ -1,0 +1,34 @@
+{
+  "name": "@pva/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "pva": "./dist/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@pkmn/sets": "^5.2.0",
+    "@pva/engine": "workspace:*",
+    "@pva/recommender": "workspace:*",
+    "@pva/showdown-data": "workspace:*",
+    "@pva/vision": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

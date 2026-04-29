@@ -3,25 +3,48 @@
 ## Last updated: 2026-04-29
 
 ## Status
-NOT_STARTED — design merged, scaffolding next
+READY_FOR_REVIEW — M6.0 simple slice in PR
 
 ## Current milestone
-M6.0 — CLI scaffold + recommend (typed-team only)
+M6.0 — CLI scaffold + recommend (open-sheet only)
 
 ## Completed
-(none)
+(none yet — M6.0 in flight)
 
 ## In Progress
-(none — M6.0 implementation kicks off after the design lands)
+- **M6.0 simple slice** — scaffold `packages/cli/`. `pva` binary
+  with `pva recommend --my-team <id|path> --opp <png>` running the
+  full pipeline end-to-end (open-sheet only) and `pva teams
+  list/show/validate` for stored-team management. Hand-rolled arg
+  parser; markdown rendering CLI-side. My-team resolves via the
+  `<teamsDir>` lookup chain (`--teams-dir` → `$PVA_TEAMS_DIR` →
+  `$XDG_CONFIG_HOME/pva/teams` → `~/.config/pva/teams` →
+  `./teams`). Storage is Showdown-export `.txt` parsed by
+  `@pkmn/sets`. Open questions resolved: hand-rolled arg parser,
+  markdown default with `--json` opt-in, no closed-sheet fixture
+  in v1.
+
+  Mock-driven offline tests cover the full orchestration: vision
+  + recommender mocked via `mockResponse`, real engine
+  matrix/speed/recommendBP runs over the parsed my-team and the
+  vision-extracted opp kits. 34 cli tests; 373 total across the
+  workspace.
 
 ## Blocking refactors
 (none)
 
 ## Follow-up
+- **M6.0b closed-sheet via priors expansion** — wire
+  `@pva/priors`'s `expand({ sheetMode: 'closed', data })` into the
+  orchestrator so closed-sheet vision (species-only opp) becomes
+  usable. Convert each opp's `KitCandidate[]` into engine
+  `OppSlotPriors`; switch from `recommendBP` to
+  `recommendBPFromSpecies`. Expected to land before M6.1 since
+  ranked ladder (the primary use case) is closed-sheet
 - **M6.1 markdown polish + scenario notes** — refine rendering
-  based on first-week ladder use; wire `--notes` flag through to
-  `recommender.recommend()`'s `notes?` parameter; add `pva replay`
-  for offline re-running of saved fixtures
+  based on first-week ladder use; `--notes` flag is already wired
+  through to the recommender — M6.1 adds `pva replay` for offline
+  re-running of saved fixtures
 - **M6.2 caching** — request-hash → cached `AgentRecommendation`
   to avoid double-billing on accidental re-runs;
   `~/.cache/pva/runs/<hash>.json`; `--no-cache` and `--refresh`

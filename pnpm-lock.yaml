@@ -15,6 +15,34 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  packages/cli:
+    dependencies:
+      '@pkmn/sets':
+        specifier: ^5.2.0
+        version: 5.2.0
+      '@pva/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@pva/recommender':
+        specifier: workspace:*
+        version: link:../recommender
+      '@pva/showdown-data':
+        specifier: workspace:*
+        version: link:../showdown-data
+      '@pva/vision':
+        specifier: workspace:*
+        version: link:../vision
+    devDependencies:
+      '@types/node':
+        specifier: ^18.19.130
+        version: 18.19.130
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@18.19.130)
+
   packages/engine:
     dependencies:
       '@smogon/calc':
@@ -311,6 +339,12 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@pkmn/sets@5.2.0':
+    resolution: {integrity: sha512-WHAW6bZu0WCo/3b+LTW7BE0fBhYZnWH1lCXIu2an8/wTiZ/+s1eTcQYj7W/YQKxWT5dm/La03AZ6CeqdJip9CQ==}
+
+  '@pkmn/types@4.0.0':
+    resolution: {integrity: sha512-gR2s/pxJYEegek1TtsYCQupNR3d5hMlcJFsiD+2LyfKr4tc+gETTql47tWLX5mFSbPcbXh7f4+7txlMIDoZx/g==}
 
   '@rollup/rollup-android-arm-eabi@4.60.2':
     resolution: {integrity: sha512-dnlp69efPPg6Uaw2dVqzWRfAWRnYVb1XJ8CyyhIbZeaq4CA5/mLeZ1IEt9QqQxmbdvagjLIm2ZL8BxXv5lH4Yw==}
@@ -782,6 +816,12 @@ snapshots:
     optional: true
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
+
+  '@pkmn/sets@5.2.0':
+    dependencies:
+      '@pkmn/types': 4.0.0
+
+  '@pkmn/types@4.0.0': {}
 
   '@rollup/rollup-android-arm-eabi@4.60.2':
     optional: true
