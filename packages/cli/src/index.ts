@@ -30,3 +30,9 @@ export {
   teamsDirCandidates,
 } from './teams/resolve.js';
 export { OppKitMissingError, oppTeamFromVision } from './teams/from-vision.js';
+export { oppSlotPriorsFromVision } from './teams/from-vision-closed.js';
+export {
+  type DefaultPriorsClientOptions,
+  type PriorsClient,
+  createDefaultPriorsClient,
+} from './priors.js';

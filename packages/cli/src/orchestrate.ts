@@ -2,6 +2,7 @@ import {
   Field,
   type Format,
   type MatchupMatrix,
+  type OppSlotPriors,
   type RankedPicks,
   type ScoreWeights,
   type SpeedRanking,
@@ -9,6 +10,7 @@ import {
   getGeneration,
   matrix,
   recommendBP,
+  recommendBPFromSpecies,
   speedTiers,
 } from '@pva/engine';
 import {
@@ -24,6 +26,8 @@ import {
   type VisionImage,
   extract as visionExtract,
 } from '@pva/vision';
+import { type PriorsClient, createDefaultPriorsClient } from './priors.js';
+import { oppSlotPriorsFromVision } from './teams/from-vision-closed.js';
 import { oppTeamFromVision } from './teams/from-vision.js';
 
 /**
@@ -44,10 +48,9 @@ const DOUBLES = new Field({ gameType: 'Doubles' });
 
 /**
  * Inputs the orchestrator needs from the CLI layer. Tests inject
- * `visionClient` / `recommenderClient` (mocks) or `mockVisionResponse`
- * / `mockRecommenderResponse` (recorded strings); production wires
- * them from the default Anthropic SDK clients in
- * `vision.createDefaultClient` and `recommender.createDefaultClient`.
+ * client mocks or pre-recorded responses; production wires the real
+ * Anthropic SDK clients in `vision.createDefaultClient` /
+ * `recommender.createDefaultClient` / `createDefaultPriorsClient`.
  */
 export interface OrchestrateOptions {
   readonly myTeam: TeamSet;
@@ -61,6 +64,8 @@ export interface OrchestrateOptions {
   // Recommender injection seams.
   readonly recommenderClient?: AnthropicClient;
   readonly mockRecommenderResponse?: string;
+  // Priors injection seam (closed-sheet only).
+  readonly priorsClient?: PriorsClient;
 }
 
 /**
@@ -68,6 +73,11 @@ export interface OrchestrateOptions {
  * `AgentRecommendation` is the primary payload; the engine artifacts
  * (matrix / speed / baseline) ride along so the renderer doesn't have
  * to recompute them.
+ *
+ * `oppTeam` carries the representative `Pokemon[]` for the matrix's
+ * row labels. Under closed sheet, these are the highest-weight kits
+ * from the priors expansion; under open sheet, they're built directly
+ * from the vision-extracted kits (1:1 with `extracted.oppTeam`).
  */
 export interface OrchestrateResult {
   readonly recommendation: AgentRecommendation;
@@ -81,10 +91,11 @@ export interface OrchestrateResult {
 /**
  * Run the full pipeline:
  *
- *   vision.extract(opp screenshot)   →  open-sheet kits
- *   build opp TeamSet from kits       (closed-sheet defers to M6.0b)
- *   engine.matrix + speedTiers + recommendBP  →  deterministic baseline
- *   recommender.recommend            →  AgentRecommendation
+ *   vision.extract(opp screenshot)         → species (closed) or kits (open)
+ *   priors.expand                          → OppSlotPriors[]   (closed-sheet only)
+ *   build opp TeamSet from kits            (open-sheet)
+ *   engine.matrix + speedTiers + recommendBP[FromSpecies]  → deterministic baseline
+ *   recommender.recommend                  → AgentRecommendation
  *
  * Returns the structured payload + engine artifacts. Markdown
  * rendering is the caller's job (CLI-side) so the M7 web UI can
@@ -99,19 +110,10 @@ export async function orchestrate(opts: OrchestrateOptions): Promise<Orchestrate
   });
 
   const gen = getGeneration();
-  const oppTeam = oppTeamFromVision(extracted, gen);
-
-  const matchupMatrix = matrix(gen, opts.myTeam, oppTeam, { field: DOUBLES });
-  const speedRanking = speedTiers(
-    [
-      ...opts.myTeam.map((p) => ({ pokemon: p, side: 'my' as const })),
-      ...oppTeam.map((p) => ({ pokemon: p, side: 'opp' as const })),
-    ],
-    {},
-  );
-  const scoreBaseline = recommendBP(gen, opts.myTeam, oppTeam, DEFAULT_WEIGHTS, {
-    field: DOUBLES,
-  });
+  const { oppTeam, matchupMatrix, speedRanking, scoreBaseline } =
+    extracted.sheetMode === 'closed'
+      ? await runClosedSheet(opts, extracted, gen)
+      : runOpenSheet(opts, extracted, gen);
 
   const recommenderOpts: RecommenderOptions = {
     format: opts.format,
@@ -137,4 +139,59 @@ export async function orchestrate(opts: OrchestrateOptions): Promise<Orchestrate
     speedRanking,
     scoreBaseline,
   };
+}
+
+interface PipelineArtifacts {
+  readonly oppTeam: TeamSet;
+  readonly matchupMatrix: MatchupMatrix;
+  readonly speedRanking: SpeedRanking;
+  readonly scoreBaseline: RankedPicks;
+}
+
+function runOpenSheet(
+  opts: OrchestrateOptions,
+  extracted: ExtractedTeamPreview,
+  gen: ReturnType<typeof getGeneration>,
+): PipelineArtifacts {
+  const oppTeam = oppTeamFromVision(extracted, gen);
+  const matchupMatrix = matrix(gen, opts.myTeam, oppTeam, { field: DOUBLES });
+  const speedRanking = speedTiers(
+    [
+      ...opts.myTeam.map((p) => ({ pokemon: p, side: 'my' as const })),
+      ...oppTeam.map((p) => ({ pokemon: p, side: 'opp' as const })),
+    ],
+    {},
+  );
+  const scoreBaseline = recommendBP(gen, opts.myTeam, oppTeam, DEFAULT_WEIGHTS, {
+    field: DOUBLES,
+  });
+  return { oppTeam, matchupMatrix, speedRanking, scoreBaseline };
+}
+
+async function runClosedSheet(
+  opts: OrchestrateOptions,
+  extracted: ExtractedTeamPreview,
+  gen: ReturnType<typeof getGeneration>,
+): Promise<PipelineArtifacts> {
+  const priorsClient =
+    opts.priorsClient ?? createDefaultPriorsClient({ format: opts.format, sheetMode: 'closed' });
+  const oppSlots: readonly OppSlotPriors[] = await oppSlotPriorsFromVision(
+    extracted,
+    gen,
+    priorsClient,
+  );
+  const oppTeam = oppSlots.map((s) => s.representative);
+  const oppKits = oppSlots.map((s) => s.kits);
+  const matchupMatrix = matrix(gen, opts.myTeam, oppTeam, { field: DOUBLES, oppKits });
+  const speedRanking = speedTiers(
+    [
+      ...opts.myTeam.map((p) => ({ pokemon: p, side: 'my' as const })),
+      ...oppTeam.map((p) => ({ pokemon: p, side: 'opp' as const })),
+    ],
+    {},
+  );
+  const scoreBaseline = recommendBPFromSpecies(gen, opts.myTeam, oppSlots, DEFAULT_WEIGHTS, {
+    field: DOUBLES,
+  });
+  return { oppTeam, matchupMatrix, speedRanking, scoreBaseline };
 }

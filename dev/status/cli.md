@@ -3,44 +3,43 @@
 ## Last updated: 2026-04-29
 
 ## Status
-READY_FOR_REVIEW — M6.0 simple slice in PR
+READY_FOR_REVIEW — M6.0b in PR (closed-sheet via priors)
 
 ## Current milestone
-M6.0 — CLI scaffold + recommend (open-sheet only)
+M6.0b — closed-sheet via priors expansion
 
 ## Completed
-(none yet — M6.0 in flight)
+- **M6.0 simple slice** (PR #36) — scaffold `packages/cli/`. `pva`
+  binary with `pva recommend --my-team <id|path> --opp <png>`
+  running the full pipeline end-to-end (open-sheet) and
+  `pva teams list/show/validate` for stored-team management.
+  Hand-rolled arg parser; markdown rendering CLI-side. My-team
+  resolves via the `<teamsDir>` lookup chain. Storage is
+  Showdown-export `.txt` parsed by `@pkmn/sets`. 34 cli tests
+  cover args parsing, my-team resolution chain, Showdown-export
+  parsing, full orchestration (mocked vision + recommender, real
+  engine), markdown rendering. Closed-sheet input rejected with a
+  typed error pointing at M6.0b.
 
 ## In Progress
-- **M6.0 simple slice** — scaffold `packages/cli/`. `pva` binary
-  with `pva recommend --my-team <id|path> --opp <png>` running the
-  full pipeline end-to-end (open-sheet only) and `pva teams
-  list/show/validate` for stored-team management. Hand-rolled arg
-  parser; markdown rendering CLI-side. My-team resolves via the
-  `<teamsDir>` lookup chain (`--teams-dir` → `$PVA_TEAMS_DIR` →
-  `$XDG_CONFIG_HOME/pva/teams` → `~/.config/pva/teams` →
-  `./teams`). Storage is Showdown-export `.txt` parsed by
-  `@pkmn/sets`. Open questions resolved: hand-rolled arg parser,
-  markdown default with `--json` opt-in, no closed-sheet fixture
-  in v1.
-
-  Mock-driven offline tests cover the full orchestration: vision
-  + recommender mocked via `mockResponse`, real engine
-  matrix/speed/recommendBP runs over the parsed my-team and the
-  vision-extracted opp kits. 34 cli tests; 373 total across the
-  workspace.
+- **M6.0b closed-sheet via priors** — wire `@pva/priors`'s
+  `expand({ sheetMode: 'closed', data })` into the orchestrator
+  so closed-sheet vision (species-only opp) becomes usable. New
+  `src/priors.ts` PriorsClient injection seam wraps
+  `priors.fetchPikalytics` + cache layer (default cache root
+  `~/.cache/pva/priors`, 7-day TTL). New
+  `src/teams/from-vision-closed.ts` builds `OppSlotPriors[]`:
+  per-species expansion, highest-weight kit picked as
+  representative, full distribution kept for the matrix. Closed
+  branch uses `engine.recommendBPFromSpecies`; open branch
+  remains on `recommendBP`. Offline test stubs `PriorsClient`
+  with synthetic per-species data so the orchestrator unit test
+  exercises the closed path without touching the network.
 
 ## Blocking refactors
 (none)
 
 ## Follow-up
-- **M6.0b closed-sheet via priors expansion** — wire
-  `@pva/priors`'s `expand({ sheetMode: 'closed', data })` into the
-  orchestrator so closed-sheet vision (species-only opp) becomes
-  usable. Convert each opp's `KitCandidate[]` into engine
-  `OppSlotPriors`; switch from `recommendBP` to
-  `recommendBPFromSpecies`. Expected to land before M6.1 since
-  ranked ladder (the primary use case) is closed-sheet
 - **M6.1 markdown polish + scenario notes** — refine rendering
   based on first-week ladder use; `--notes` flag is already wired
   through to the recommender — M6.1 adds `pva replay` for offline
