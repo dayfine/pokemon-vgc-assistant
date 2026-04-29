@@ -3,10 +3,10 @@
 ## Last updated: 2026-04-29
 
 ## Status
-READY_FOR_REVIEW (B-LRN-2 + B-LRN-3 rework applied, awaiting re-QC)
+APPROVED
 
 structural_qc: APPROVED 2026-04-29
-behavioral_qc: NEEDS_REWORK 2026-04-29 (re-review @ `aec49e3`) — rework pushed: Kommo-o + Toxicroak removed from `wide-guard-spread-block`; Kommo-o removed from `quick-guard-priority-block`; both species also dropped from `SPECIES_USED` cross-check list. `wideGuardUsers` and `quickGuardUsers` now `['Hitmontop', 'Mienshao']`. Re-run behavioral QC against new tip. Original B-LRN, B-LEG-S1, B-STUB findings remain FIXED. See `dev/reviews/m6.5.1-facts-expansion.md` "Behavioral QC — re-review" section for details.
+behavioral_qc: APPROVED 2026-04-29 (re-review 2 @ `68ac551`) — B-LRN-2 + B-LRN-3 rework verified: Kommo-o + Toxicroak removed from `wide-guard-spread-block`; Kommo-o removed from `quick-guard-priority-block`; both dropped from `SPECIES_USED` (count 38 → 36, ≥ 30 floor). Broadened third-cycle sweep across all 38 facts (move-user lists, move/ability prose claims, item references) verified against Showdown gen-9 master `data/learnsets.ts` + `data/pokedex.ts` — no further findings. All prior findings (B-LRN, B-LEG-S1, B-STUB, B-LRN-2, B-LRN-3) FIXED. 39 tests passed / 1 skipped. Quality score 4. See `dev/reviews/m6.5.1-facts-expansion.md` "Behavioral QC — re-review 2 (SHA 68ac551)" section for details. Follow-up: file harness_gap LINTER_CANDIDATE for Showdown-movepool golden test (would catch the three-cycle learnset-error pattern at CI rather than per-PR review).
 
 ## Current milestone
 M6.5.2 — series-level notes integration (M7 hook)
