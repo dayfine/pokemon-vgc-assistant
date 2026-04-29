@@ -94,7 +94,7 @@ describe('buildPrompt — Tabuyo Charizard X experiment fixture', () => {
     `);
   });
 
-  it('omits series notes section when notes is empty/undefined', () => {
+  it('omits series notes section when notes is undefined', () => {
     const bundle = experimentBundle();
     const prompt = buildPrompt({
       format: 'gen9championsvgc2026regma',
@@ -104,6 +104,24 @@ describe('buildPrompt — Tabuyo Charizard X experiment fixture', () => {
       matrix: bundle.matchupMatrix,
       speedRanking: bundle.speed,
       scoreBaseline: bundle.baseline,
+    });
+    expect(prompt).not.toContain('Series-level facts');
+  });
+
+  it('omits series notes section when notes is the empty array', () => {
+    // Distinct from the undefined branch — the M7 UI may pass `[]`
+    // before any notes accumulate. Rendering an empty section header
+    // would burn a slot and confuse the model.
+    const bundle = experimentBundle();
+    const prompt = buildPrompt({
+      format: 'gen9championsvgc2026regma',
+      sheetMode: 'open',
+      myTeam: bundle.myTeam,
+      oppTeam: bundle.oppTeam,
+      matrix: bundle.matchupMatrix,
+      speedRanking: bundle.speed,
+      scoreBaseline: bundle.baseline,
+      notes: [],
     });
     expect(prompt).not.toContain('Series-level facts');
   });
@@ -122,6 +140,69 @@ describe('buildPrompt — Tabuyo Charizard X experiment fixture', () => {
     });
     expect(prompt).toContain('## Series-level facts revealed so far');
     expect(prompt).toContain('Volcarona had Quiver Dance');
+  });
+
+  it('renders multiple notes preserving caller-supplied order', () => {
+    // The notes array is the M7 UI's primary lever for narrowing the
+    // prior across games of a series. Order is part of the contract:
+    // newer information typically lands later, and the model reads
+    // them sequentially. A reorder would change recommendations.
+    const bundle = experimentBundle();
+    const notes = [
+      'Game 1 turn 3 — opp Incineroar revealed Knock Off (not Flare Blitz).',
+      'Game 1 turn 5 — opp Volcarona used Heat Wave under sun (confirms sun-team archetype).',
+      'Game 2 turn 1 — opp led Tatsugiri + Dondozo (Commander pair confirmed).',
+    ];
+    const prompt = buildPrompt({
+      format: 'gen9championsvgc2026regma',
+      sheetMode: 'open',
+      myTeam: bundle.myTeam,
+      oppTeam: bundle.oppTeam,
+      matrix: bundle.matchupMatrix,
+      speedRanking: bundle.speed,
+      scoreBaseline: bundle.baseline,
+      notes,
+    });
+    const sectionStart = prompt.indexOf('## Series-level facts revealed so far');
+    expect(sectionStart).toBeGreaterThanOrEqual(0);
+    let cursor = sectionStart;
+    for (const note of notes) {
+      const idx = prompt.indexOf(note, cursor);
+      expect(idx, `note "${note.slice(0, 40)}…" missing or out of order`).toBeGreaterThanOrEqual(
+        cursor,
+      );
+      cursor = idx + note.length;
+    }
+  });
+
+  it('pins the series-notes section format', () => {
+    // Inline snapshot covers the exact rendered shape of the section —
+    // any drift in heading, bullet style, or whitespace fails the
+    // snapshot. Prevents accidental schema changes that would silently
+    // shift how the model reads notes.
+    const bundle = experimentBundle();
+    const prompt = buildPrompt({
+      format: 'gen9championsvgc2026regma',
+      sheetMode: 'open',
+      myTeam: bundle.myTeam,
+      oppTeam: bundle.oppTeam,
+      matrix: bundle.matchupMatrix,
+      speedRanking: bundle.speed,
+      scoreBaseline: bundle.baseline,
+      notes: ['Game 1 — opp Volcarona had Quiver Dance.', 'Game 2 — opp led TR (Hatterene).'],
+    });
+    const start = prompt.indexOf('## Series-level facts revealed so far');
+    // Section bodies contain `\n\n` between heading and bullets, so the
+    // section terminator is the next section heading (`\n\n## …`), not
+    // the first blank line.
+    const end = prompt.indexOf('\n\n## ', start);
+    const section = prompt.slice(start, end);
+    expect(section).toMatchInlineSnapshot(`
+      "## Series-level facts revealed so far
+
+      - Game 1 — opp Volcarona had Quiver Dance.
+      - Game 2 — opp led TR (Hatterene)."
+    `);
   });
 
   it('renders the M-B stub format rules when format=gen9championsvgc2026regmb', () => {

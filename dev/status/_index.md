@@ -9,7 +9,7 @@ agent definition.
 |-------------|----------------------------|------------------|-------------------|
 | engine      | dev/status/engine.md       | feat-engine      | M1–M3 + M3.5 + kit-aware-speed merged; idle until v2 |
 | priors      | dev/status/priors.md       | feat-priors      | M4 + M4.5 merged; idle until v2. See `dev/plans/03-priors-design.md` |
-| recommender | dev/status/recommender.md  | feat-recommender | M6.5.0–M6.5.3 merged. M6.5.2 next (series-level notes integration). See `dev/plans/06-recommender-design.md` |
+| recommender | dev/status/recommender.md  | feat-recommender | M6.5.0–M6.5.3 + M6.5.2 merged; track complete for v1 scope. See `dev/plans/06-recommender-design.md` |
 
 ## Tracks not yet started
 

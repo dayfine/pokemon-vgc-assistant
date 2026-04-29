@@ -3,17 +3,18 @@
 ## Last updated: 2026-04-29
 
 ## Status
-READY (no open PR)
+RECOMMENDER TRACK COMPLETE for v1 scope (no open PR)
 
-M6.5.3 (facts data gate) shipped — the learnset / ability / item
-class of bugs that drove three rework cycles on PR #25 is now
-mechanically gated at CI against the vendored Showdown-Champions
-snapshot. Five PRs landed in sequence: #25 (M6.5.1 facts), #26
-(M6.5.3 design), #28 (snapshot + loader), #29 (claims migration +
-gate test), #31 (aurora-veil form bug surfaced during migration).
+All M6.5.x milestones merged. The recommender package ships the
+public `recommend()` callable, 38 hand-curated facts gated against
+a pinned Showdown-Champions snapshot at CI, format-rotation
+handling, and the series-level `notes?` parameter wired into the
+prompt. Track is idle until v2 needs (e.g. recommender-side
+caching of prior runs for M7 diff display, or expanding facts
+beyond ≥30 once meta data accumulates).
 
 ## Current milestone
-M6.5.2 — series-level notes integration (M7 hook)
+(none — track idle)
 
 ## Completed
 - **M6.5.0 simple slice** (PR #23) — scaffolded
@@ -62,6 +63,14 @@ M6.5.2 — series-level notes integration (M7 hook)
   three QC rework cycles to manually catch what's now caught
   mechanically at CI. Aurora-veil form bug (Kantonian vs Alolan
   Ninetales) surfaced during migration and fixed in PR #31.
+- **M6.5.2 series-level notes** (PR #33 + earlier scaffolding) —
+  `notes?: readonly string[]` parameter wired through the public
+  `recommend()` signature into the prompt builder's
+  "Series-level facts revealed so far" section. Plumbing landed
+  during M6.5.0; M6.5.2 hardens with multi-note ordering test,
+  empty-array branch test, and an inline-snapshot pin of the
+  rendered section format. M7 will populate notes from the web
+  UI; recommender side is complete.
 
 ## In Progress
 (none)
@@ -70,12 +79,7 @@ M6.5.2 — series-level notes integration (M7 hook)
 (none)
 
 ## Follow-up
-- **M6.5.2 series-level notes (M7 hook)** — wire the
-  `notes?: readonly string[]` parameter into the prompt's
-  "Series-level facts revealed so far" section. The parameter is
-  already plumbed through the public `recommend()` signature; this
-  milestone is just the prompt-builder hookup + tests. The notes UI
-  itself belongs to M7 and stays out of scope here.
+(none for v1)
 - **CI live-test job** — when M6.5.0 lands, add a workflow (or extend
   `pnpm-test.yml`) that runs the `RUN_LIVE_TESTS=1` suite on a manual
   trigger or weekly cron, with `env: ANTHROPIC_API_KEY:
