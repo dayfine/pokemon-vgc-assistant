@@ -3,13 +3,18 @@
 ## Last updated: 2026-04-29
 
 ## Status
-APPROVED
+READY (no open PR)
 
-structural_qc: APPROVED 2026-04-29
-behavioral_qc: APPROVED 2026-04-29 (re-review 2 @ `68ac551`) — B-LRN-2 + B-LRN-3 rework verified: Kommo-o + Toxicroak removed from `wide-guard-spread-block`; Kommo-o removed from `quick-guard-priority-block`; both dropped from `SPECIES_USED` (count 38 → 36, ≥ 30 floor). Broadened third-cycle sweep across all 38 facts (move-user lists, move/ability prose claims, item references) verified against Showdown gen-9 master `data/learnsets.ts` + `data/pokedex.ts` — no further findings. All prior findings (B-LRN, B-LEG-S1, B-STUB, B-LRN-2, B-LRN-3) FIXED. 39 tests passed / 1 skipped. Quality score 4. See `dev/reviews/m6.5.1-facts-expansion.md` "Behavioral QC — re-review 2 (SHA 68ac551)" section for details. Follow-up: file harness_gap LINTER_CANDIDATE for Showdown-movepool golden test (would catch the three-cycle learnset-error pattern at CI rather than per-PR review).
+PR #25 (M6.5.1 facts expansion) merged 2026-04-29 as `6717571` after
+three QC rework cycles. Final verdicts: structural APPROVED @
+`110f623`, behavioral APPROVED @ `68ac551` (score 4/5). Five
+findings closed (B-LRN, B-LEG-S1, B-STUB, B-LRN-2, B-LRN-3) — all
+of the same class: hand-curated species-name lists drifting from
+Showdown's authoritative learnsets. M6.5.3 (below) addresses this
+class mechanically.
 
 ## Current milestone
-M6.5.2 — series-level notes integration (M7 hook)
+M6.5.3 — facts data gate (Showdown-Champions snapshot)
 
 ## Completed
 - **M6.5.0 simple slice** (PR #23) — scaffolded
@@ -52,10 +57,24 @@ M6.5.2 — series-level notes integration (M7 hook)
 (none)
 
 ## Follow-up
+- **M6.5.3 facts data gate** — vendor a pinned Showdown-Champions
+  data snapshot under `data/showdown-snapshot/` (learnsets, pokedex,
+  items, formats-data; base gen-9 + `gen9champions` mod overlay).
+  Hoist machine-checkable claims out of `facts.ts` predicates into
+  a structured `FactClaim` table (species + move/ability/item).
+  New test `packages/recommender/test/facts-claims.test.ts`
+  iterates every claim × snapshot — fails CI on any drift. Refresh
+  script `scripts/refresh-showdown-snapshot.sh` for manual updates
+  (Champions data isn't churning daily; refresh deliberately when
+  M-B research lands or upstream announces a learnset change). All
+  five M6.5.1 findings would have been blocked at CI by this gate.
+  Sequence before M6.5.2 so notes integration ships under the
+  guard. See `dev/plans/06-recommender-design.md` §"M6.5.3 — facts
+  data gate" for the design.
 - **M6.5.2 series-level notes (M7 hook)** — wire the
   `notes?: readonly string[]` parameter into the prompt's
   "Series-level facts revealed so far" section. The notes UI itself
-  belongs to M7.
+  belongs to M7. Lands after M6.5.3.
 - **CI live-test job** — when M6.5.0 lands, add a workflow (or extend
   `pnpm-test.yml`) that runs the `RUN_LIVE_TESTS=1` suite on a manual
   trigger or weekly cron, with `env: ANTHROPIC_API_KEY:

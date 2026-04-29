@@ -247,6 +247,113 @@ recommendation (manually graded, not regression-tested).
 - Cover ≥30 M-A species' ability/move tactical interactions.
 - Add format-rotation handling (per-format facts subsetting).
 
+### M6.5.3 — facts data gate (Showdown-Champions snapshot)
+
+**Motivation.** PR #25 (M6.5.1) needed three qc-behavioral rework
+cycles to close five learnset findings — `helping-hand-damage-chain`
+listed Sneasler + Sinistcha; `wide-guard-spread-block` listed
+Kommo-o + Toxicroak; `quick-guard-priority-block` listed Kommo-o.
+Each was a fact predicate naming a species that doesn't actually
+learn the move per Showdown gen-9 data. The same class of bug
+applies to ability-on-species and item-on-species claims; only
+moves were exercised in M6.5.1, but the prose-mention surface is
+much wider.
+
+The behavioral QC catch is reactive and inferential. Make it
+deterministic: every machine-checkable claim in `facts.ts` must
+gate against a vendored Showdown-Champions data snapshot at CI
+time.
+
+**Source of truth.** `smogon/pokemon-showdown` mod
+`data/mods/gen9champions/`, merged with the base gen-9 data the
+mod inherits from. Per `qc-behavioral-authority.md`: "Anything
+contradicting Showdown is wrong." We target the Champions mod
+specifically — vanilla gen-9 lookup misses Champions-exclusive
+Megas (Mega Greninja / Mega Meganium / Mega Feraligatr) and any
+mod-overridden learnset entries.
+
+**Snapshot vendoring.** Don't depend on a live Showdown checkout
+in CI. Vendor a pinned subset at `data/showdown-snapshot/` with a
+top-level `PINNED_COMMIT.txt` capturing the upstream SHA.
+
+```
+data/showdown-snapshot/
+  PINNED_COMMIT.txt              # one line: <sha>\n
+  base/
+    learnsets.ts                 # base gen-9 learnsets
+    pokedex.ts                   # base gen-9 pokedex (abilities, types)
+  gen9champions/
+    learnsets.ts                 # mod overlay (deltas only)
+    pokedex.ts                   # mod overlay (deltas only)
+    items.ts                     # mod overlay (Champions-exclusive items)
+    formats-data.ts              # tier flags (banned-in-M-A markers)
+```
+
+A refresh script `scripts/refresh-showdown-snapshot.sh` clones
+upstream at a config-pinned commit, copies the four-or-five files,
+updates `PINNED_COMMIT.txt`. Run manually — Champions data isn't
+churning daily and surprise upstream changes shouldn't break our
+CI.
+
+**Claims-table refactor.** Today predicates carry inline arrays
+inside `applies` closures. Hoist to a structured `claims` field
+on `Fact`:
+
+```ts
+interface FactClaim {
+  readonly species: readonly string[];
+  readonly move?: string;          // canonical Showdown ID e.g. 'helpinghand'
+  readonly ability?: string;       // canonical Showdown ID e.g. 'drought'
+  readonly item?: string;          // canonical Showdown ID e.g. 'salamencite'
+}
+interface Fact {
+  readonly key: string;
+  readonly claims?: readonly FactClaim[];   // machine-checked
+  readonly applies: (myTeam: TeamSet, oppTeam: TeamSet) => boolean;
+  readonly text: string;
+  readonly format?: Format;
+}
+```
+
+The predicate body stays a closure — flexibility for facts whose
+trigger isn't a simple `species ∈ list` check (e.g. team-composition
+gates like `Tatsugiri + Dondozo`). The `claims` array is data,
+checked separately.
+
+**Test.** `packages/recommender/test/facts-claims.test.ts` —
+table-driven, iterates every `Fact.claims[i]` × snapshot:
+
+| Claim shape | Check |
+|---|---|
+| `{ species, move }` | each species's merged learnset includes the move |
+| `{ species, ability }` | the species's pokedex `abilities` includes the ability |
+| `{ species, item }` | item exists in items.ts AND (if Mega Stone) `megaStone` field names the species |
+
+A claim that fails fails CI. The cross-check from M6.5.1 (every
+`SPECIES_USED` entry appears in `facts.ts` source) stays — they
+guard different things.
+
+**Out of scope for the gate**:
+
+- Prose-mention claims (e.g. fact text says "Hyper Voice becomes a
+  spread Flying STAB" — this is mechanic prose, not a data claim).
+  Stays as ongoing-review.
+- Format legality of every species — already covered by the
+  ban-line scan in `facts.test.ts` plus the M-A reference doc.
+  M6.5.3 verifies "this species learns this move per Showdown,"
+  not "this species is M-A-legal."
+- Damage-calc correctness — already covered by `@smogon/calc`'s
+  own test suite.
+
+**Done when**: PR adding a new fact with a wrong learnset/ability/
+item claim fails CI deterministically before any qc-behavioral
+review fires. M6.5.1's five findings would all have been blocked
+mechanically.
+
+**Sequencing.** Land before M6.5.2 so series-level notes
+integration (which will likely add more fact predicates as the
+agent learns mid-series) ships under the gate.
+
 ### M6.5.2 — series-level notes integration (M7 hook)
 
 - `notes?: readonly string[]` parameter feeds into a "Series-level
