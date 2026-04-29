@@ -5,16 +5,15 @@
 ## Status
 READY (no open PR)
 
-PR #25 (M6.5.1 facts expansion) merged 2026-04-29 as `6717571` after
-three QC rework cycles. Final verdicts: structural APPROVED @
-`110f623`, behavioral APPROVED @ `68ac551` (score 4/5). Five
-findings closed (B-LRN, B-LEG-S1, B-STUB, B-LRN-2, B-LRN-3) — all
-of the same class: hand-curated species-name lists drifting from
-Showdown's authoritative learnsets. M6.5.3 (below) addresses this
-class mechanically.
+M6.5.3 (facts data gate) shipped — the learnset / ability / item
+class of bugs that drove three rework cycles on PR #25 is now
+mechanically gated at CI against the vendored Showdown-Champions
+snapshot. Five PRs landed in sequence: #25 (M6.5.1 facts), #26
+(M6.5.3 design), #28 (snapshot + loader), #29 (claims migration +
+gate test), #31 (aurora-veil form bug surfaced during migration).
 
 ## Current milestone
-M6.5.3 — facts data gate (Showdown-Champions snapshot)
+M6.5.2 — series-level notes integration (M7 hook)
 
 ## Completed
 - **M6.5.0 simple slice** (PR #23) — scaffolded
@@ -49,6 +48,20 @@ M6.5.3 — facts data gate (Showdown-Champions snapshot)
   with cross-check that every entry appears in facts source. Every
   new species/ability/item cross-checked against
   `champions-2026-04-26.md` for M-A legality.
+- **M6.5.3 facts data gate** (PRs #28 + #29) — vendor a pinned
+  Showdown-Champions data snapshot at `data/showdown-snapshot/`
+  (base gen-9 + `gen9champions/` mod overlay,
+  `PINNED_COMMIT.txt = cbe2e8b`, refreshed via
+  `scripts/refresh-showdown-snapshot.sh`). Test-only loader at
+  `packages/recommender/test/helpers/showdown-snapshot.ts` exposes
+  `speciesLearnsMoveGen9`, `speciesHasAbility`, `itemExists`,
+  `megaStoneTriggers`. Migrate 30 of 38 facts to populate
+  `Fact.claims?: readonly FactClaim[]`. New table-driven gate
+  `facts-claims.test.ts` iterates every claim × snapshot — 89
+  generated tests, all green. Closed bug class: M6.5.1 needed
+  three QC rework cycles to manually catch what's now caught
+  mechanically at CI. Aurora-veil form bug (Kantonian vs Alolan
+  Ninetales) surfaced during migration and fixed in PR #31.
 
 ## In Progress
 (none)
@@ -57,24 +70,12 @@ M6.5.3 — facts data gate (Showdown-Champions snapshot)
 (none)
 
 ## Follow-up
-- **M6.5.3 facts data gate** — vendor a pinned Showdown-Champions
-  data snapshot under `data/showdown-snapshot/` (learnsets, pokedex,
-  items, formats-data; base gen-9 + `gen9champions` mod overlay).
-  Hoist machine-checkable claims out of `facts.ts` predicates into
-  a structured `FactClaim` table (species + move/ability/item).
-  New test `packages/recommender/test/facts-claims.test.ts`
-  iterates every claim × snapshot — fails CI on any drift. Refresh
-  script `scripts/refresh-showdown-snapshot.sh` for manual updates
-  (Champions data isn't churning daily; refresh deliberately when
-  M-B research lands or upstream announces a learnset change). All
-  five M6.5.1 findings would have been blocked at CI by this gate.
-  Sequence before M6.5.2 so notes integration ships under the
-  guard. See `dev/plans/06-recommender-design.md` §"M6.5.3 — facts
-  data gate" for the design.
 - **M6.5.2 series-level notes (M7 hook)** — wire the
   `notes?: readonly string[]` parameter into the prompt's
-  "Series-level facts revealed so far" section. The notes UI itself
-  belongs to M7. Lands after M6.5.3.
+  "Series-level facts revealed so far" section. The parameter is
+  already plumbed through the public `recommend()` signature; this
+  milestone is just the prompt-builder hookup + tests. The notes UI
+  itself belongs to M7 and stays out of scope here.
 - **CI live-test job** — when M6.5.0 lands, add a workflow (or extend
   `pnpm-test.yml`) that runs the `RUN_LIVE_TESTS=1` suite on a manual
   trigger or weekly cron, with `env: ANTHROPIC_API_KEY:
